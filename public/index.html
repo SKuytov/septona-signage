@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Септона България — Работен график</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body data-layout="board">
+  <div id="app">
+    <!-- ================= HEADER ================= -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">SEPTONA</div>
+        <div class="brand-txt">
+          <div class="brand-title">„СЕПТОНА БЪЛГАРИЯ" АД</div>
+          <div class="brand-sub">ПРОИЗВОДСТВЕН ГРАФИК</div>
+        </div>
+      </div>
+
+      <div class="period-chip" id="periodChip">— / —</div>
+
+      <div class="shift-totals" id="shiftTotals"></div>
+
+      <div class="clock-wrap">
+        <div class="current-shift" id="currentShiftBox">
+          <div class="cs-label">ТЕКУЩА СМЯНА</div>
+          <div class="cs-value" id="currentShiftValue">—</div>
+          <div class="cs-count" id="currentShiftCount"></div>
+        </div>
+        <div class="clock">
+          <div class="clock-time" id="clockTime">--:--:--</div>
+          <div class="clock-date" id="clockDate">—</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ================= TABS ================= -->
+    <nav class="tabs" id="tabs"></nav>
+
+    <!-- ================= BOARD (dashboard) ================= -->
+    <main class="board" id="board"></main>
+
+    <!-- ================= GRID (faithful) ================= -->
+    <main class="grid-view" id="gridView" hidden></main>
+
+    <!-- ================= FOOTER ================= -->
+    <footer class="footer">
+      <div class="legend" id="legend"></div>
+      <div class="foot-right">
+        <span id="footAddr">„Септона България" АД · бул. Липник 155, Русе 7005 · 082/844-267</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- floating controls (hidden on true signage via ?kiosk=1) -->
+  <div class="controls" id="controls">
+    <button data-layout="board" class="ctrl active">Табло</button>
+    <button data-layout="grid" class="ctrl">Графика</button>
+    <a href="/admin.html" class="ctrl ctrl-link">Качване</a>
+  </div>
+
+  <div class="empty-state" id="emptyState" hidden>
+    <div>
+      <h1>Няма зареден график</h1>
+      <p>Качете седмичния .xlsx файл от <a href="/admin.html">страницата за качване</a>.</p>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

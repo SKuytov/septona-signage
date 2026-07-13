@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Качване на график — Септона</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: radial-gradient(900px 500px at 20% -10%, #16204a, #0b1020 60%); color: #eaf0ff; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .card { width: 100%; max-width: 640px; background: linear-gradient(180deg, #121a33, #0f1730); border: 1px solid #223056; border-radius: 18px; padding: 32px; }
+    .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .logo { font-weight: 900; letter-spacing: .14em; background: #fff; color: #0b1020; padding: 4px 10px; border-radius: 8px; }
+    h1 { font-size: 22px; margin-bottom: 4px; }
+    .sub { color: #9fb0d6; font-size: 14px; margin-bottom: 24px; }
+    label { display: block; font-weight: 600; font-size: 14px; margin: 16px 0 6px; color: #cdd8f5; }
+    .drop { border: 2px dashed #33477e; border-radius: 14px; padding: 34px; text-align: center; cursor: pointer; transition: .15s; background: rgba(255,255,255,.02); }
+    .drop.drag { border-color: #ffb020; background: rgba(255,176,32,.08); }
+    .drop .big { font-size: 16px; font-weight: 700; }
+    .drop .small { color: #9fb0d6; font-size: 13px; margin-top: 6px; }
+    input[type=file] { display: none; }
+    input[type=password] { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid #33477e; background: #0f1730; color: #eaf0ff; font-size: 15px; font-family: inherit; }
+    .fname { margin-top: 12px; font-size: 14px; color: #ffb020; font-weight: 600; }
+    button { margin-top: 22px; width: 100%; padding: 14px; border: none; border-radius: 12px; background: #ffb020; color: #0b1020; font-weight: 800; font-size: 16px; cursor: pointer; font-family: inherit; }
+    button:disabled { opacity: .5; cursor: default; }
+    .result { margin-top: 20px; border-radius: 12px; padding: 16px; font-size: 14px; display: none; }
+    .result.ok { background: rgba(63,169,245,.12); border: 1px solid #3fa9f5; display: block; }
+    .result.err { background: rgba(255,80,80,.12); border: 1px solid #ff5050; display: block; }
+    .result h3 { margin-bottom: 8px; }
+    .sec-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #22315a; }
+    .lines { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .li { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #9fb0d6; }
+    .sw { width: 16px; height: 16px; border-radius: 4px; border: 1px solid rgba(255,255,255,.25); }
+    a.view { display: inline-block; margin-top: 16px; color: #ffb020; text-decoration: none; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand"><span class="logo">SEPTONA</span><span style="font-weight:800">Качване на седмичен график</span></div>
+    <h1>Обновяване на таблото в лобито</h1>
+    <p class="sub">Изберете седмичния .xlsx файл. Системата автоматично разчита имената, смените и цветовете на автобусните линии.</p>
+
+    <div class="drop" id="drop">
+      <div class="big">Пуснете .xlsx тук или щракнете за избор</div>
+      <div class="small">напр. 20.04.2026-24.04.2026-sedmichen.xlsx</div>
+      <div class="fname" id="fname"></div>
+    </div>
+    <input type="file" id="file" accept=".xlsx" />
+
+    <label for="key">Администраторски ключ (ако е зададен)</label>
+    <input type="password" id="key" placeholder="оставете празно ако не е настроен" />
+
+    <button id="btn" disabled>Качи и обнови таблото</button>
+
+    <div class="result" id="result"></div>
+    <a class="view" href="/?kiosk=1&rotate=20" target="_blank">Отвори таблото за дисплея →</a>
+  </div>
+
+  <script>
+    const drop = document.getElementById('drop');
+    const fileInput = document.getElementById('file');
+    const btn = document.getElementById('btn');
+    const fname = document.getElementById('fname');
+    const result = document.getElementById('result');
+    let file = null;
+
+    drop.addEventListener('click', () => fileInput.click());
+    drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('drag'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
+    drop.addEventListener('drop', (e) => {
+      e.preventDefault(); drop.classList.remove('drag');
+      if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', () => { if (fileInput.files.length) setFile(fileInput.files[0]); });
+
+    function setFile(f) {
+      if (!/\.xlsx$/i.test(f.name)) { alert('Моля изберете .xlsx файл'); return; }
+      file = f; fname.textContent = '✓ ' + f.name; btn.disabled = false;
+    }
+
+    btn.addEventListener('click', async () => {
+      if (!file) return;
+      btn.disabled = true; btn.textContent = 'Обработка…'; result.className = 'result';
+      const fd = new FormData(); fd.append('file', file);
+      try {
+        const r = await fetch('/api/upload', { method: 'POST', headers: { 'x-admin-key': document.getElementById('key').value }, body: fd });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'Грешка');
+        result.className = 'result ok';
+        result.innerHTML = `<h3>✓ Таблото е обновено</h3>
+          <div><b>Период:</b> ${d.period || '—'}</div>
+          <div><b>Общо работници:</b> ${d.grandTotal}</div>
+          <div style="margin-top:10px">` +
+          d.sections.map(s => `<div class="sec-row"><span>${s.name}</span><span>${s.total} (${s.shifts.join(' / ')})</span></div>`).join('') +
+          `</div><div class="lines">` +
+          d.lines.map(l => `<span class="li"><span class="sw" style="background:${l.color}"></span>${l.name}</span>`).join('') +
+          `</div>`;
+      } catch (e) {
+        result.className = 'result err';
+        result.innerHTML = '<h3>Грешка</h3><div>' + e.message + '</div>';
+      } finally { btn.disabled = false; btn.textContent = 'Качи и обнови таблото'; }
+    });
+  </script>
+</body>
+</html>
