@@ -250,14 +250,19 @@
   );
 
   /* ---------- auto-rotate sections (signage) ----------
-     Interval is driven by settings (sectionRotateSec) and restarts whenever
-     the timing changes. A ?rotate= query param, if present, still overrides. */
+     Interval is driven by the admin timing (sectionRotateSec) and restarts
+     whenever it changes. A ?rotate= query param only seeds the initial value
+     until real settings arrive — saved admin settings always win afterwards. */
   let rotateTimer = null;
-  const rotateOverride = qs.get('rotate');
+  let rotateAppliedSecs = null;   // seconds currently in effect
+  const rotateSeed = parseInt(qs.get('rotate') || '', 10);
+  if (Number.isFinite(rotateSeed) && rotateSeed >= 5) state.timings.sectionRotateSec = rotateSeed;
   function startSectionRotate() {
+    const secs = state.timings.sectionRotateSec || 20;
+    // don't tear down a running timer if the cadence hasn't actually changed
+    if (rotateTimer && rotateAppliedSecs === secs) return;
     if (rotateTimer) { clearInterval(rotateTimer); rotateTimer = null; }
-    const secs = rotateOverride ? (parseInt(rotateOverride, 10) || 20)
-      : (state.timings.sectionRotateSec || 20);
+    rotateAppliedSecs = secs;
     rotateTimer = setInterval(() => {
       if (!state.data || state.data.sections.length < 2) return;
       state.activeSection = (state.activeSection + 1) % state.data.sections.length;
@@ -267,13 +272,17 @@
   startSectionRotate();
 
   /* ---------- settings (display timings) ---------- */
+  const TIMING_FIELDS = ['sectionRotateSec', 'scrollPauseSec', 'scrollSpeedPx', 'slideGapSec', 'slideDurationSec'];
   async function loadSettings() {
     try {
       const r = await fetch('/api/settings', { cache: 'no-store' });
       if (!r.ok) return;
       const s = await r.json();
-      const changed = JSON.stringify(s) !== JSON.stringify(state.timings);
-      state.timings = { ...DEFAULT_TIMINGS, ...s };
+      const next = { ...DEFAULT_TIMINGS, ...s };
+      // detect changes field-by-field (robust to key ordering)
+      const changed = TIMING_FIELDS.some((k) => Number(next[k]) !== Number(state.timings[k]));
+      state.timings = next;
+      window.__signageTimings = next; // inspectable in the console for debugging
       if (changed) {
         startSectionRotate();       // apply new rotation cadence
         startColumnScroll();        // apply new scroll speed/pause
