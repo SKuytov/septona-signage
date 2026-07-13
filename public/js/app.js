@@ -174,8 +174,8 @@
      its viewport, pauses at the top and bottom, then loops back to the top.
      Runs on requestAnimationFrame; restarted on every board re-render. */
   let scrollRAF = null;
-  const SCROLL_SPEED = 14;   // px per second
-  const PAUSE_MS = 3500;     // pause at top and bottom
+  const SCROLL_SPEED = 7;    // px per second
+  const PAUSE_MS = 5000;     // pause at top and bottom
   function startColumnScroll() {
     if (scrollRAF) { cancelAnimationFrame(scrollRAF); scrollRAF = null; }
     if (state.layout !== 'board') return;
