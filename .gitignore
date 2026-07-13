@@ -1,5 +1,6 @@
 node_modules/
-uploads/*.xlsx
+uploads/*
+!uploads/.gitkeep
 data/schedule.json
 data/messages.json
 data/settings.json
