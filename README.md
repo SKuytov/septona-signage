@@ -16,6 +16,12 @@ A lobby signage web app that displays the weekly worker schedule from an uploade
 - **Автоматично обновяване** — таблото проверява за нов график на всеки 20 сек.
 - **Kiosk режим** — `?kiosk=1` скрива контролите; `?rotate=20` върти секциите на всеки 20 сек.
 - **Часовник на живо** (Europe/Sofia) и осветяване на текущата смяна.
+- **Съобщения върху таблото / On-screen messages** — публикувай съобщения (със или без изображение) в три режима:
+  - **Бягаща лента (banner)** — тънка лента долу върху графика.
+  - **Цял екран (slide)** — ротира се на пълен екран между графика.
+  - **Спешно (takeover)** — червено пулсиращо известие, което заема целия екран и прекъсва всичко.
+  - Всяко съобщение има приоритет/цвят (Информация / Внимание / Спешно), по избор начало/край на показване и времетраене. Управляват се от `/messages.html`.
+- **Android kiosk приложение** — готов `.apk` (WebView обвивка) за инсталиране на дисплея; авто-старт, екранът не заспива, устойчив на офлайн. Виж [`android/`](./android/README.md).
 
 ---
 
@@ -56,7 +62,13 @@ ADMIN_KEY=таен-ключ npm start
 | GET   | `/api/schedule`  | Връща разчетения график (JSON). 404 ако няма качен.    |
 | GET   | `/api/status`    | Метаданни за polling (период, `parsedAt`, брой).       |
 | POST  | `/api/upload`    | Качва `.xlsx` (multipart `file`). Header `x-admin-key`.|
+| GET   | `/api/messages`     | Активни съобщения (публично, за таблото).           |
+| GET   | `/api/messages/all` | Всички съобщения (admin, `x-admin-key`).            |
+| POST  | `/api/messages`     | Ново съобщение (multipart: полета + по избор `image`). Admin. |
+| DELETE| `/api/messages/:id` | Изтрива съобщение. Admin.                           |
 | GET   | `/healthz`       | Health check.                                          |
+
+**Админ страници:** `/admin.html` (качване на график) и `/messages.html` (управление на съобщения).
 
 ---
 
@@ -78,6 +90,12 @@ ADMIN_KEY=таен-ключ npm start
 
 ---
 
+## Android kiosk приложение / Android app
+
+В [`android/`](./android/README.md) има пълен Android проект (WebView kiosk обвивка). Готовият `SeptonaSignage-debug.apk` се инсталира директно на дисплея. Компилиране от източник: `cd android && ./gradlew assembleDebug` (изисква JDK 17 + Android SDK 34).
+
+---
+
 ## Технологии / Stack
 
-Node.js · Express · ExcelJS · Multer · vanilla JS frontend (без build стъпка).
+Node.js · Express · ExcelJS · Multer · vanilla JS frontend (без build стъпка) · Android WebView (Java, Gradle 8.9, AGP 8.5.2).

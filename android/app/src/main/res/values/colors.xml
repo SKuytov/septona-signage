@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="signage_bg">#0B1020</color>
+    <color name="signage_accent">#FFB020</color>
+</resources>

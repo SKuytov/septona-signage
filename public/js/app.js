@@ -225,11 +225,116 @@
     }, secs * 1000);
   }
 
+  /* ======================================================================
+     MESSAGES ENGINE
+     - ticker:   scrolling strip along the bottom (always visible if any)
+     - slide:    full-screen cards rotated between the schedule
+     - takeover: urgent full-screen, interrupts everything
+     ====================================================================== */
+  const msgState = {
+    all: [], ticker: [], slides: [], takeovers: [],
+    slideIdx: 0, slideTimer: null, takeoverActive: false, updatedAt: null,
+  };
+  const BADGE = { info: 'ИНФОРМАЦИЯ', warning: 'ВНИМАНИЕ', urgent: '⚠ ВАЖНО' };
+
+  function escapeHtmlMsg(s) { return escapeHtml(s == null ? '' : s); }
+
+  async function loadMessages() {
+    try {
+      const r = await fetch('/api/messages', { cache: 'no-store' });
+      if (!r.ok) return;
+      const d = await r.json();
+      const changed = d.updatedAt !== msgState.updatedAt ||
+        (d.messages || []).length !== msgState.all.length;
+      msgState.updatedAt = d.updatedAt;
+      msgState.all = d.messages || [];
+      msgState.ticker = msgState.all.filter((m) => m.mode === 'banner');
+      msgState.slides = msgState.all.filter((m) => m.mode === 'slide');
+      msgState.takeovers = msgState.all.filter((m) => m.mode === 'takeover');
+      if (changed) { renderTicker(); resetSlides(); }
+      handleTakeover();
+    } catch (e) { console.error('msg load', e); }
+  }
+
+  /* ---------- ticker ---------- */
+  function renderTicker() {
+    const wrap = el('msgTicker');
+    if (!msgState.ticker.length) { wrap.hidden = true; document.body.removeAttribute('data-ticker'); return; }
+    wrap.hidden = false;
+    document.body.setAttribute('data-ticker', '1');
+    const top = msgState.ticker[0];
+    wrap.style.setProperty('--tag', top.color);
+    el('tickerTag').textContent = top.priority === 'urgent' ? 'ВАЖНО' : 'СЪОБЩЕНИЕ';
+    const items = msgState.ticker.map((m) => {
+      const txt = [m.title, m.body].filter(Boolean).join(' — ');
+      return `<span class="tk-item"><span class="tk-dot" style="background:${m.color}"></span>${escapeHtmlMsg(txt)}</span>`;
+    }).join('');
+    const track = el('tickerTrack');
+    track.innerHTML = items + items; // duplicate for seamless loop
+    // speed proportional to content length
+    const len = track.textContent.length;
+    track.style.setProperty('--tickdur', Math.max(18, Math.min(90, len * 0.35)) + 's');
+  }
+
+  /* ---------- slides ---------- */
+  function resetSlides() {
+    if (msgState.slideTimer) { clearTimeout(msgState.slideTimer); msgState.slideTimer = null; }
+    msgState.slideIdx = 0;
+    el('msgSlide').hidden = true;
+    if (msgState.slides.length) scheduleNextSlide(0);
+  }
+  // Show a slide every SLIDE_GAP of schedule time, for the message's duration.
+  const SLIDE_GAP_MS = 25 * 1000;
+  function scheduleNextSlide(delay) {
+    msgState.slideTimer = setTimeout(showSlide, delay != null ? delay : SLIDE_GAP_MS);
+  }
+  function showSlide() {
+    if (msgState.takeoverActive || !msgState.slides.length) { scheduleNextSlide(); return; }
+    const m = msgState.slides[msgState.slideIdx % msgState.slides.length];
+    msgState.slideIdx++;
+    const card = el('slideCard');
+    card.style.setProperty('--tag', m.color);
+    el('slideBadge').textContent = BADGE[m.priority] || BADGE.info;
+    el('slideBadge').style.background = m.color;
+    el('slideTitle').textContent = m.title || '';
+    el('slideTitle').hidden = !m.title;
+    el('slideMsg').textContent = m.body || '';
+    el('slideMsg').hidden = !m.body;
+    const img = el('slideImg');
+    if (m.image) { img.src = m.image; img.hidden = false; } else { img.hidden = true; img.removeAttribute('src'); }
+    el('msgSlide').hidden = false;
+    const dur = (m.durationSec || 12) * 1000;
+    setTimeout(() => { el('msgSlide').hidden = true; scheduleNextSlide(); }, dur);
+  }
+
+  /* ---------- takeover ---------- */
+  function handleTakeover() {
+    const t = msgState.takeovers[0];
+    const box = el('msgTakeover');
+    if (t) {
+      msgState.takeoverActive = true;
+      el('takeoverBadge').textContent = t.priority === 'urgent' ? '⚠ ВАЖНО' : (BADGE[t.priority] || 'СЪОБЩЕНИЕ');
+      el('takeoverTitle').textContent = t.title || '';
+      el('takeoverTitle').hidden = !t.title;
+      el('takeoverMsg').textContent = t.body || '';
+      el('takeoverMsg').hidden = !t.body;
+      const img = el('takeoverImg');
+      if (t.image) { img.src = t.image; img.hidden = false; } else { img.hidden = true; img.removeAttribute('src'); }
+      box.hidden = false;
+      if (el('msgSlide')) el('msgSlide').hidden = true;
+    } else {
+      msgState.takeoverActive = false;
+      box.hidden = true;
+    }
+  }
+
   /* ---------- boot ---------- */
   tickClock();
   setInterval(tickClock, 1000);
   setInterval(renderHeader, 30 * 1000); // refresh current-shift highlight
   loadData(true);
   setInterval(loadData, 20 * 1000);     // poll for new uploads
+  loadMessages();
+  setInterval(loadMessages, 12 * 1000); // poll for new messages
   window.addEventListener('resize', () => renderAll());
 })();

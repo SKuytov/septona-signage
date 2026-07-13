@@ -61,12 +61,45 @@
     <button data-layout="board" class="ctrl active">Табло</button>
     <button data-layout="grid" class="ctrl">Графика</button>
     <a href="/admin.html" class="ctrl ctrl-link">Качване</a>
+    <a href="/messages.html" class="ctrl ctrl-link">Съобщения</a>
   </div>
 
   <div class="empty-state" id="emptyState" hidden>
     <div>
       <h1>Няма зареден график</h1>
       <p>Качете седмичния .xlsx файл от <a href="/admin.html">страницата за качване</a>.</p>
+    </div>
+  </div>
+
+  <!-- ================= MESSAGES ================= -->
+  <!-- Scrolling banner/ticker along the bottom -->
+  <div class="msg-ticker" id="msgTicker" hidden>
+    <div class="ticker-tag" id="tickerTag">СЪОБЩЕНИЕ</div>
+    <div class="ticker-viewport"><div class="ticker-track" id="tickerTrack"></div></div>
+  </div>
+
+  <!-- Full-screen rotating message slide -->
+  <div class="msg-slide" id="msgSlide" hidden>
+    <div class="slide-card" id="slideCard">
+      <div class="slide-badge" id="slideBadge">ИНФОРМАЦИЯ</div>
+      <div class="slide-body">
+        <img class="slide-img" id="slideImg" alt="" hidden />
+        <div class="slide-text">
+          <h1 class="slide-title" id="slideTitle"></h1>
+          <p class="slide-msg" id="slideMsg"></p>
+        </div>
+      </div>
+      <div class="slide-foot" id="slideFoot">Септона България</div>
+    </div>
+  </div>
+
+  <!-- Urgent takeover -->
+  <div class="msg-takeover" id="msgTakeover" hidden>
+    <div class="takeover-inner">
+      <div class="takeover-badge" id="takeoverBadge">⚠ ВАЖНО</div>
+      <img class="takeover-img" id="takeoverImg" alt="" hidden />
+      <h1 class="takeover-title" id="takeoverTitle"></h1>
+      <p class="takeover-msg" id="takeoverMsg"></p>
     </div>
   </div>
 

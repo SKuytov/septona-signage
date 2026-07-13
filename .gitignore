@@ -1,7 +1,19 @@
 node_modules/
 uploads/*.xlsx
 data/schedule.json
+data/messages.json
+public/media/*
+!public/media/.gitkeep
 .env
 *.log
 npm-debug.log*
 .DS_Store
+
+# Android build artifacts
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+android/.idea/
+*.iml
+SeptonaSignage-debug.apk
