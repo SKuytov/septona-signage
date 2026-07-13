@@ -6,11 +6,16 @@
   if (qs.get('kiosk') === '1') document.body.setAttribute('data-kiosk', '1');
 
   const SHIFT_COLORS = ['var(--s1)', 'var(--s2)', 'var(--s3)'];
+  const DEFAULT_TIMINGS = {
+    sectionRotateSec: 20, scrollPauseSec: 3.5, scrollSpeedPx: 7,
+    slideGapSec: 25, slideDurationSec: 12,
+  };
   const state = {
     data: null,
     activeSection: 0,
     layout: qs.get('layout') || 'board',
     lastParsedAt: null,
+    timings: { ...DEFAULT_TIMINGS },
   };
   document.body.setAttribute('data-layout', state.layout);
 
@@ -91,7 +96,7 @@
       const rows = Math.ceil(sh.workers.length / cols) || 1;
       const workersHtml = sh.workers.map((w) => `
         <div class="worker">
-          <span class="num" style="${chipStyle(w.color)}">${w.num != null ? w.num : ''}</span>
+          <span class="num" style="${chipStyle(w.color)}" title="${escapeHtml(w.line || '')}">${w.lineNo != null ? w.lineNo : ''}</span>
           <span class="meta">
             <span class="wname">${escapeHtml(w.name)}</span>
             <span class="wloc">${escapeHtml(w.location || '')}</span>
@@ -127,7 +132,7 @@
       const subCols = Math.max(1, Math.ceil(sh.workers.length / rowsPerCol));
       const rowsHtml = sh.workers.map((w) => `
         <div class="grow" style="background:${w.color};color:${textOn(w.color)}">
-          <span class="gnum">${w.num != null ? w.num : ''}</span>
+          <span class="gnum">${w.lineNo != null ? w.lineNo : ''}</span>
           <span class="gname">${escapeHtml(w.name)}</span>
           <span class="gloc">${escapeHtml(w.location || '')}</span>
         </div>`).join('');
@@ -144,7 +149,7 @@
   function renderLegend() {
     const lines = state.data.lines || [];
     el('legend').innerHTML = lines.map((l) =>
-      `<span class="li"><span class="sw" style="background:${l.color}"></span>${escapeHtml(l.name)}</span>`
+      `<span class="li"><span class="sw sw-num" style="${chipStyle(l.color)}">${l.lineNo != null ? l.lineNo : ''}</span>${escapeHtml(l.name)}</span>`
     ).join('');
   }
 
@@ -174,16 +179,18 @@
      its viewport, pauses at the top and bottom, then loops back to the top.
      Runs on requestAnimationFrame; restarted on every board re-render. */
   let scrollRAF = null;
-  const SCROLL_SPEED = 7;    // px per second
-  const PAUSE_MS = 5000;     // pause at top and bottom
   function startColumnScroll() {
     if (scrollRAF) { cancelAnimationFrame(scrollRAF); scrollRAF = null; }
     if (state.layout !== 'board') return;
+    const scrollSpeed = state.timings.scrollSpeedPx || 7;   // px per second
+    const pauseMs = (state.timings.scrollPauseSec != null ? state.timings.scrollPauseSec : 3.5) * 1000;
+    document.querySelectorAll('#board .col-body').forEach((b) => b.classList.remove('scrolls'));
     const tracks = Array.from(document.querySelectorAll('#board .col-body')).map((body) => {
       const track = body.querySelector('.workers');
       const max = Math.max(0, track.scrollHeight - body.clientHeight);
       track.style.transform = 'translateY(0)';
-      return { track, max, y: 0, dir: 1, pausedUntil: performance.now() + PAUSE_MS };
+      if (max > 4) body.classList.add('scrolls'); // fade edges only when scrolling
+      return { track, max, y: 0, dir: 1, pausedUntil: performance.now() + pauseMs };
     }).filter((t) => t.max > 4); // only scroll columns that actually overflow
     if (!tracks.length) return;
     let last = performance.now();
@@ -192,9 +199,9 @@
       last = now;
       for (const t of tracks) {
         if (now < t.pausedUntil) continue;
-        t.y += t.dir * SCROLL_SPEED * dt;
-        if (t.y >= t.max) { t.y = t.max; t.dir = -1; t.pausedUntil = now + PAUSE_MS; }
-        else if (t.y <= 0) { t.y = 0; t.dir = 1; t.pausedUntil = now + PAUSE_MS; }
+        t.y += t.dir * scrollSpeed * dt;
+        if (t.y >= t.max) { t.y = t.max; t.dir = -1; t.pausedUntil = now + pauseMs; }
+        else if (t.y <= 0) { t.y = 0; t.dir = 1; t.pausedUntil = now + pauseMs; }
         t.track.style.transform = `translateY(${-t.y}px)`;
       }
       scrollRAF = requestAnimationFrame(frame);
@@ -242,15 +249,37 @@
     })
   );
 
-  /* ---------- auto-rotate sections (signage) ---------- */
-  const rotate = qs.get('rotate');
-  if (rotate) {
-    const secs = parseInt(rotate, 10) || 15;
-    setInterval(() => {
-      if (!state.data) return;
+  /* ---------- auto-rotate sections (signage) ----------
+     Interval is driven by settings (sectionRotateSec) and restarts whenever
+     the timing changes. A ?rotate= query param, if present, still overrides. */
+  let rotateTimer = null;
+  const rotateOverride = qs.get('rotate');
+  function startSectionRotate() {
+    if (rotateTimer) { clearInterval(rotateTimer); rotateTimer = null; }
+    const secs = rotateOverride ? (parseInt(rotateOverride, 10) || 20)
+      : (state.timings.sectionRotateSec || 20);
+    rotateTimer = setInterval(() => {
+      if (!state.data || state.data.sections.length < 2) return;
       state.activeSection = (state.activeSection + 1) % state.data.sections.length;
       renderAll();
     }, secs * 1000);
+  }
+  startSectionRotate();
+
+  /* ---------- settings (display timings) ---------- */
+  async function loadSettings() {
+    try {
+      const r = await fetch('/api/settings', { cache: 'no-store' });
+      if (!r.ok) return;
+      const s = await r.json();
+      const changed = JSON.stringify(s) !== JSON.stringify(state.timings);
+      state.timings = { ...DEFAULT_TIMINGS, ...s };
+      if (changed) {
+        startSectionRotate();       // apply new rotation cadence
+        startColumnScroll();        // apply new scroll speed/pause
+        resetSlides();              // apply new slide gap/duration
+      }
+    } catch (e) { /* keep current timings */ }
   }
 
   /* ======================================================================
@@ -311,10 +340,10 @@
     el('msgSlide').hidden = true;
     if (msgState.slides.length) scheduleNextSlide(0);
   }
-  // Show a slide every SLIDE_GAP of schedule time, for the message's duration.
-  const SLIDE_GAP_MS = 25 * 1000;
+  // Show a slide every slideGapSec of schedule time, for the message's duration.
   function scheduleNextSlide(delay) {
-    msgState.slideTimer = setTimeout(showSlide, delay != null ? delay : SLIDE_GAP_MS);
+    const gap = (state.timings.slideGapSec || 25) * 1000;
+    msgState.slideTimer = setTimeout(showSlide, delay != null ? delay : gap);
   }
   function showSlide() {
     if (msgState.takeoverActive || !msgState.slides.length) { scheduleNextSlide(); return; }
@@ -331,7 +360,7 @@
     const img = el('slideImg');
     if (m.image) { img.src = m.image; img.hidden = false; } else { img.hidden = true; img.removeAttribute('src'); }
     el('msgSlide').hidden = false;
-    const dur = (m.durationSec || 12) * 1000;
+    const dur = (m.durationSec || state.timings.slideDurationSec || 12) * 1000;
     setTimeout(() => { el('msgSlide').hidden = true; scheduleNextSlide(); }, dur);
   }
 
@@ -360,6 +389,8 @@
   tickClock();
   setInterval(tickClock, 1000);
   setInterval(renderHeader, 30 * 1000); // refresh current-shift highlight
+  loadSettings();
+  setInterval(loadSettings, 15 * 1000); // poll for timing changes from admin
   loadData(true);
   setInterval(loadData, 20 * 1000);     // poll for new uploads
   loadMessages();

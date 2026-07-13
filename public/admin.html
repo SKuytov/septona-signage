@@ -35,12 +35,23 @@
     .logout { position: absolute; top: 18px; right: 18px; }
     .logout button { margin: 0; width: auto; padding: 8px 14px; background: transparent; color: #9fb0d6; border: 1px solid #33477e; border-radius: 8px; font-size: 13px; font-weight: 600; }
     .logout button:hover { color: #ffb020; border-color: #ffb020; }
+    .wrap { width: 100%; max-width: 640px; display: flex; flex-direction: column; gap: 20px; }
+    .card { max-width: none; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; }
+    .fld label { margin-top: 0; }
+    .fld input[type=number] { width: 100%; padding: 11px 13px; border-radius: 10px; border: 1px solid #33477e; background: #0f1730; color: #eaf0ff; font-size: 15px; font-family: inherit; }
+    .fld .hint { font-size: 12px; color: #6b7ba6; margin-top: 4px; }
+    .save-status { margin-top: 14px; font-size: 14px; font-weight: 600; min-height: 20px; }
+    .save-status.ok { color: #5ad07f; }
+    .save-status.err { color: #ff6b6b; }
+    button.secondary { background: #22315a; color: #eaf0ff; }
   </style>
 </head>
 <body>
   <div class="logout"><button id="logout">Изход</button></div>
+  <div class="wrap">
   <div class="card">
-    <div class="brand"><span class="logo">SEPTONA</span><span style="font-weight:800">Качване на седмичен график</span></div>
+    <div class="brand"><span style="font-weight:900;font-size:18px">СЕПТОНА БЪЛГАРИЯ</span><span style="font-weight:600;color:#9fb0d6">· табло</span></div>
     <h1>Обновяване на таблото в лобито</h1>
     <p class="sub">Изберете седмичния .xlsx файл. Системата автоматично разчита имената, смените и цветовете на автобусните линии.</p>
 
@@ -55,7 +66,44 @@
 
     <div class="result" id="result"></div>
     <a class="view" href="/messages.html">Управление на съобщения →</a>
-    <a class="view" href="/?kiosk=1&rotate=20" target="_blank" style="margin-left:16px">Отвори таблото за дисплея →</a>
+    <a class="view" href="/?kiosk=1" target="_blank" style="margin-left:16px">Отвори таблото за дисплея →</a>
+  </div>
+
+  <!-- ============ TIMINGS ============ -->
+  <div class="card">
+    <h1>Настройки на таблото (тайминги)</h1>
+    <p class="sub">Управлявайте скоростта на превъртане и колко дълго стоят екраните. Промените се прилагат на таблото автоматично до 15 секунди.</p>
+    <div class="row2">
+      <div class="fld">
+        <label for="sectionRotateSec">Смяна на цех (сек)</label>
+        <input type="number" id="sectionRotateSec" min="5" max="600" step="1" />
+        <div class="hint">Колко дълго стои всеки цех преди да превключи. Мин. 5.</div>
+      </div>
+      <div class="fld">
+        <label for="scrollPauseSec">Пауза при превъртане (сек)</label>
+        <input type="number" id="scrollPauseSec" min="0" max="60" step="0.5" />
+        <div class="hint">Пауза горе и долу на списъка с хора.</div>
+      </div>
+      <div class="fld">
+        <label for="scrollSpeedPx">Скорост на превъртане (px/сек)</label>
+        <input type="number" id="scrollSpeedPx" min="1" max="200" step="1" />
+        <div class="hint">По-малко = по-бавно. Препоръчано 6–10.</div>
+      </div>
+      <div class="fld">
+        <label for="slideGapSec">Пауза между съобщения-слайдове (сек)</label>
+        <input type="number" id="slideGapSec" min="5" max="3600" step="1" />
+        <div class="hint">През колко време изскача целоекранно съобщение.</div>
+      </div>
+      <div class="fld">
+        <label for="slideDurationSec">Времетраене на слайд (сек)</label>
+        <input type="number" id="slideDurationSec" min="3" max="300" step="1" />
+        <div class="hint">По подразбиране, ако съобщението няма собствено.</div>
+      </div>
+    </div>
+    <button id="saveTimings">Запази настройките</button>
+    <button id="resetTimings" class="secondary">Върни стандартните</button>
+    <div class="save-status" id="saveStatus"></div>
+  </div>
   </div>
 
   <script>
@@ -107,6 +155,48 @@
     document.getElementById('logout').addEventListener('click', async () => {
       await fetch('/api/logout', { method: 'POST' });
       location.href = '/login.html';
+    });
+
+    /* ---------- timings ---------- */
+    const TIMING_KEYS = ['sectionRotateSec', 'scrollPauseSec', 'scrollSpeedPx', 'slideGapSec', 'slideDurationSec'];
+    const DEFAULTS = { sectionRotateSec: 20, scrollPauseSec: 3.5, scrollSpeedPx: 7, slideGapSec: 25, slideDurationSec: 12 };
+    const saveStatus = document.getElementById('saveStatus');
+
+    function fillTimings(s) {
+      TIMING_KEYS.forEach((k) => { if (s[k] != null) document.getElementById(k).value = s[k]; });
+    }
+    async function loadTimings() {
+      try {
+        const r = await fetch('/api/settings', { cache: 'no-store' });
+        if (r.ok) fillTimings(await r.json());
+      } catch (e) { /* ignore */ }
+    }
+    loadTimings();
+
+    document.getElementById('saveTimings').addEventListener('click', async () => {
+      const payload = {};
+      TIMING_KEYS.forEach((k) => { payload[k] = document.getElementById(k).value; });
+      saveStatus.className = 'save-status'; saveStatus.textContent = 'Запазване…';
+      try {
+        const r = await fetch('/api/settings', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+        });
+        if (r.status === 401) { location.href = '/login.html?next=' + encodeURIComponent('/admin.html'); return; }
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'Грешка');
+        fillTimings(d.settings);
+        saveStatus.className = 'save-status ok';
+        saveStatus.textContent = '✓ Запазено. Таблото ще се обнови до 15 секунди.';
+      } catch (e) {
+        saveStatus.className = 'save-status err';
+        saveStatus.textContent = 'Грешка: ' + e.message;
+      }
+    });
+
+    document.getElementById('resetTimings').addEventListener('click', () => {
+      fillTimings(DEFAULTS);
+      saveStatus.className = 'save-status';
+      saveStatus.textContent = 'Стандартните стойности са попълнени — натиснете „Запази“.';
     });
   </script>
 </body>

@@ -2,6 +2,7 @@ node_modules/
 uploads/*.xlsx
 data/schedule.json
 data/messages.json
+data/settings.json
 public/media/*
 !public/media/.gitkeep
 .env

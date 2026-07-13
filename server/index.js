@@ -34,7 +34,46 @@ const PORT = process.env.PORT || 3000;
 const DATA_DIR = path.join(ROOT, 'data');
 const UPLOAD_DIR = path.join(ROOT, 'uploads');
 const DATA_FILE = path.join(DATA_DIR, 'schedule.json');
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 const PUBLIC_DIR = path.join(ROOT, 'public');
+
+// Display timing settings (seconds). Adjustable from the admin panel.
+const DEFAULT_SETTINGS = {
+  sectionRotateSec: 20,   // how long each цех/section stays on screen
+  scrollPauseSec: 3.5,    // pause at the top & bottom of a scrolling worker list
+  scrollSpeedPx: 7,       // worker-list scroll speed (px/sec)
+  slideGapSec: 25,        // gap between full-screen message slides
+  slideDurationSec: 12,   // default full-screen slide duration (per-message value wins)
+};
+function readSettings() {
+  try {
+    if (fs.existsSync(SETTINGS_FILE)) {
+      return { ...DEFAULT_SETTINGS, ...JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')) };
+    }
+  } catch (e) { /* fall through to defaults */ }
+  return { ...DEFAULT_SETTINGS };
+}
+function writeSettings(patch) {
+  const cur = readSettings();
+  const next = { ...cur };
+  const clampNum = (v, min, max) => {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return null;
+    return Math.min(max, Math.max(min, n));
+  };
+  const rules = {
+    sectionRotateSec: [5, 600], scrollPauseSec: [0, 60], scrollSpeedPx: [1, 200],
+    slideGapSec: [5, 3600], slideDurationSec: [3, 300],
+  };
+  for (const [k, [min, max]] of Object.entries(rules)) {
+    if (patch[k] !== undefined && patch[k] !== '' && patch[k] !== null) {
+      const v = clampNum(patch[k], min, max);
+      if (v !== null) next[k] = v;
+    }
+  }
+  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(next, null, 2));
+  return next;
+}
 // Optional admin key to protect the admin pages + uploads (set ADMIN_KEY env to enable)
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
 // Secret used to sign the login cookie. Defaults to a value derived from ADMIN_KEY;
@@ -200,6 +239,24 @@ app.post('/api/upload', requireAdmin, (req, res) => {
       res.status(500).json({ error: 'Грешка при обработка на файла: ' + e.message });
     }
   });
+});
+
+// ---------------- SETTINGS (display timings) ----------------
+
+// Public: the display reads timings from here.
+app.get('/api/settings', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(readSettings());
+});
+
+// Admin: update timings.
+app.post('/api/settings', requireAdmin, (req, res) => {
+  try {
+    const next = writeSettings(req.body || {});
+    res.json({ ok: true, settings: next });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 // ---------------- MESSAGES ----------------

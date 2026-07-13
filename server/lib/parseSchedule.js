@@ -210,6 +210,23 @@ async function parseScheduleBuffer(buffer) {
 
   const { locToLine, lines } = parseLegend(ws);
 
+  // ---- Assign a stable BUS-LINE NUMBER to each line ----
+  // The number shown in each worker's bubble is their BUS LINE (not their
+  // ordinal position), so everyone on the same line shares one number+color.
+  // Preferred order: РУСЕ = 1 (city bus, white), обретеник = 2 (green), then
+  // the remaining lines in legend order.
+  const linePriority = (name) => {
+    const n = String(name || '').toLowerCase();
+    if (/русе|ruse/.test(n)) return 0;        // 1 — city bus (white)
+    if (/обретеник/.test(n)) return 1;         // 2 — green
+    return 2;                                   // others keep legend order
+  };
+  const orderedLines = lines
+    .map((l, i) => ({ ...l, _legend: i }))
+    .sort((a, b) => (linePriority(a.name) - linePriority(b.name)) || (a._legend - b._legend));
+  const lineNoByName = new Map();
+  orderedLines.forEach((l, i) => { l.lineNo = i + 1; delete l._legend; lineNoByName.set(l.name, i + 1); });
+
   // Legend starts where column B says "линия" or column D has COUNTIF.
   let legendStart = ws.rowCount + 1;
   for (let r = 1; r <= ws.rowCount; r++) {
@@ -281,10 +298,16 @@ async function parseScheduleBuffer(buffer) {
 
   const grandTotal = sections.reduce((a, s) => a + s.total, 0);
 
+  // Stamp each worker with their bus-line number (falls back to null if the
+  // line couldn't be resolved, e.g. an unknown location).
+  sections.forEach((sec) => sec.shifts.forEach((sh) => sh.workers.forEach((w) => {
+    w.lineNo = w.line != null && lineNoByName.has(w.line) ? lineNoByName.get(w.line) : null;
+  })));
+
   return {
     title: title || '„СЕПТОНА БЪЛГАРИЯ" АД',
     period, grandTotal, parsedAt: new Date().toISOString(),
-    lines, sections,
+    lines: orderedLines, sections,
   };
 }
 

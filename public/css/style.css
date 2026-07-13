@@ -122,16 +122,19 @@ body {
   padding: 0.28vh 0.5vw; border-radius: 7px; min-width: 0;
   background: rgba(255,255,255,0.02);
 }
-/* subtle fade at the top/bottom edges so scrolling looks clean */
-.col-body::before, .col-body::after {
-  content: ""; position: absolute; left: 0; right: 0; height: 3vh; z-index: 2; pointer-events: none;
+/* subtle fade at the top/bottom edges — only shown when the column actually
+   scrolls, so short lists are never covered by shadow. */
+.col-body.scrolls::before, .col-body.scrolls::after {
+  content: ""; position: absolute; left: 0; right: 0; height: 2vh; z-index: 2; pointer-events: none;
 }
-.col-body::before { top: 0; background: linear-gradient(180deg, var(--panel) 0%, rgba(18,26,51,0) 100%); }
-.col-body::after { bottom: 0; background: linear-gradient(0deg, var(--panel2) 0%, rgba(15,23,48,0) 100%); }
+.col-body.scrolls::before { top: 0; background: linear-gradient(180deg, var(--panel) 0%, rgba(18,26,51,0) 100%); }
+.col-body.scrolls::after { bottom: 0; background: linear-gradient(0deg, var(--panel2) 0%, rgba(15,23,48,0) 100%); }
 .worker .num {
-  font-size: 0.68vw; font-weight: 800; color: #0b1020;
-  border-radius: 6px; padding: 0.1vh 0.4vw; min-width: 1.8vw; text-align: center;
-  font-variant-numeric: tabular-nums; flex: 0 0 auto;
+  font-size: 0.95vw; font-weight: 900; color: #0b1020;
+  border-radius: 50%; width: 1.6vw; height: 1.6vw;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center; font-variant-numeric: tabular-nums; flex: 0 0 auto;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.28);
 }
 .worker .meta { min-width: 0; }
 .worker .wname { font-weight: 700; font-size: 0.9vw; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -165,6 +168,12 @@ body {
 .legend { display: flex; gap: 0.9vw; flex-wrap: wrap; align-items: center; }
 .legend .li { display: flex; align-items: center; gap: 0.4vw; font-size: 0.8vw; color: var(--ink-dim); }
 .legend .sw { width: 1.1vw; height: 1.1vw; border-radius: 4px; border: 1px solid rgba(255,255,255,0.25); }
+.legend .sw-num {
+  width: 1.4vw; height: 1.4vw; border-radius: 50%; border: none;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.85vw; font-weight: 900; font-variant-numeric: tabular-nums;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.28);
+}
 .foot-right { margin-left: auto; font-size: 0.72vw; color: var(--ink-faint); }
 
 /* ---------------- CONTROLS ---------------- */
