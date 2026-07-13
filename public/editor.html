@@ -37,6 +37,9 @@
     @media (max-width: 1100px) { .shifts { grid-template-columns: 1fr; } }
     .shift { background: rgba(255,255,255,.02); border: 1px solid #22315a; border-radius: 12px; padding: 12px; min-height: 80px; }
     .shift.dragover { border-color: #ffb020; background: rgba(255,176,32,.08); }
+    .card.sec-dragover { border-color: #ffb020; box-shadow: 0 0 0 2px rgba(255,176,32,.35); }
+    .sec-title { cursor: default; }
+    .sec-title.drop-hint { border-radius: 10px; }
     .shift-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
     .shift-head .lbl { font-weight: 800; }
     .shift-head .time { color: #9fb0d6; font-size: 12px; }
@@ -280,7 +283,28 @@
         const total = sec.shifts.reduce((a, s) => a + (s.workers ? s.workers.length : 0), 0);
         const card = document.createElement('div');
         card.className = 'card';
-        card.innerHTML = `<div class="sec-title"><h2>${esc(sec.name)}</h2><span class="tot">${total} души общо</span></div>`;
+        card.innerHTML = `<div class="sec-title"><h2>${esc(sec.name)}</h2><span class="tot">${total} души общо</span><span class="tot" style="color:#6b7ba6">— пуснете човек върху цеха, за да го преместите тук</span></div>`;
+        // Whole-section drop target: dropping onto the section (header or empty area)
+        // moves the person into this section, keeping the same shift index when possible.
+        card.addEventListener('dragover', (ev) => {
+          if (!dragCtx) return;
+          ev.preventDefault(); ev.dataTransfer.dropEffect = 'move';
+          card.classList.add('sec-dragover');
+        });
+        card.addEventListener('dragleave', (ev) => {
+          // only clear when leaving the card entirely
+          if (!card.contains(ev.relatedTarget)) card.classList.remove('sec-dragover');
+        });
+        card.addEventListener('drop', (ev) => {
+          card.classList.remove('sec-dragover');
+          if (!dragCtx) return;
+          // If the drop already landed on a specific shift column, that column's
+          // handler ran first and cleared dragCtx via its own moveWorker->render.
+          // Guard: dragCtx still set means it was dropped on the section chrome.
+          ev.preventDefault();
+          const targetSh = Math.min(dragCtx.shIdx, sec.shifts.length - 1);
+          moveWorker(dragCtx.w, dragCtx.secIdx, dragCtx.shIdx, si, targetSh < 0 ? 0 : targetSh);
+        });
         const shiftsWrap = document.createElement('div');
         shiftsWrap.className = 'shifts';
         sec.shifts.forEach((sh, shi) => {
@@ -309,7 +333,10 @@
           col.addEventListener('dragover', (ev) => { ev.preventDefault(); col.classList.add('dragover'); ev.dataTransfer.dropEffect = 'move'; });
           col.addEventListener('dragleave', () => col.classList.remove('dragover'));
           col.addEventListener('drop', (ev) => {
-            ev.preventDefault(); col.classList.remove('dragover');
+            ev.preventDefault();
+            ev.stopPropagation(); // don't also trigger the section-level drop
+            col.classList.remove('dragover');
+            card.classList.remove('sec-dragover');
             if (dragCtx) moveWorker(dragCtx.w, dragCtx.secIdx, dragCtx.shIdx, si, shi);
           });
           shiftsWrap.appendChild(col);
