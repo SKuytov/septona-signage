@@ -38,12 +38,16 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String PREFS = "septona_signage";
     private static final String KEY_URL = "display_url";
-    private static final String DEFAULT_URL = "http://192.168.1.100:3000/?kiosk=1&rotate=20";
+    private static final String DEFAULT_URL =
+            "https://signageseptona.tail675c8b.ts.net/?kiosk=1&rotate=20";
 
     private WebView web;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private boolean pageReady = false;
     private int retryCount = 0;
+    // Hidden gesture: tap the top-left corner 5 times quickly to open settings
+    private int cornerTaps = 0;
+    private long lastCornerTap = 0;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -95,7 +99,29 @@ public class MainActivity extends AppCompatActivity {
         // Long-press anywhere opens settings (hidden admin gesture)
         web.setOnLongClickListener(v -> { showSettings(); return true; });
 
-        loadDisplay();
+        // Robust fallback gesture: tap the top-left corner 5x within 3s.
+        // Works even when page content swallows the long-press.
+        web.setOnTouchListener((v, ev) -> {
+            if (ev.getAction() == android.view.MotionEvent.ACTION_DOWN) {
+                float cornerPx = 120 * getResources().getDisplayMetrics().density;
+                if (ev.getX() < cornerPx && ev.getY() < cornerPx) {
+                    long now = System.currentTimeMillis();
+                    cornerTaps = (now - lastCornerTap < 3000) ? cornerTaps + 1 : 1;
+                    lastCornerTap = now;
+                    if (cornerTaps >= 5) { cornerTaps = 0; showSettings(); }
+                }
+            }
+            return false; // don't consume — let the page work normally
+        });
+
+        // First run (no URL saved yet): open settings so staff can enter/confirm
+        // the address. Otherwise load the saved/default URL straight away.
+        SharedPreferences prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        if (!prefs.contains(KEY_URL)) {
+            showSettings();
+        } else {
+            loadDisplay();
+        }
         // Periodic health check: if the page never became ready, keep retrying
         handler.postDelayed(healthCheck, 15000);
     }
@@ -148,7 +174,8 @@ public class MainActivity extends AppCompatActivity {
 
         new AlertDialog.Builder(this)
                 .setTitle("Адрес на таблото")
-                .setMessage("Въведете адреса на сървъра (напр. Tailscale Funnel URL).")
+                .setMessage("Въведете адреса на сървъра (напр. Tailscale URL).\n" +
+                        "Скрит достъп: задръжте пръст върху екрана или чукнете 5 пъти горния ляв ъгъл.")
                 .setView(box)
                 .setPositiveButton("Запази", (d, w) -> {
                     String url = input.getText().toString().trim();
@@ -161,7 +188,14 @@ public class MainActivity extends AppCompatActivity {
                     }
                 })
                 .setNeutralButton("Презареди", (d, w) -> web.reload())
-                .setNegativeButton("Отказ", null)
+                .setNegativeButton("Възстанови по подразбиране", (d, w) -> {
+                    p.edit().putString(KEY_URL, DEFAULT_URL).apply();
+                    input.setText(DEFAULT_URL);
+                    pageReady = false;
+                    retryCount = 0;
+                    web.loadUrl(DEFAULT_URL);
+                    Toast.makeText(this, "Върнат адрес по подразбиране", Toast.LENGTH_SHORT).show();
+                })
                 .show();
     }
 
