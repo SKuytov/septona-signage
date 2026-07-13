@@ -37,12 +37,8 @@ body {
   padding: 0.9vh 1.2vw; flex: 0 0 auto;
 }
 .brand { display: flex; align-items: center; gap: 0.9vw; min-width: 0; }
-.logo {
-  font-weight: 900; letter-spacing: 0.14em; font-size: 1.5vw;
-  color: #0b1020; background: #fff; padding: 0.4vh 0.7vw; border-radius: 8px;
-}
-.brand-title { font-weight: 800; font-size: 1.15vw; line-height: 1.1; }
-.brand-sub { font-size: 0.7vw; color: var(--ink-dim); letter-spacing: 0.22em; margin-top: 0.2vh; }
+.brand-title { font-weight: 900; font-size: 1.55vw; line-height: 1.05; color: #fff; }
+.brand-sub { font-size: 0.78vw; color: var(--ink-dim); letter-spacing: 0.22em; margin-top: 0.25vh; }
 
 .period-chip {
   font-weight: 700; font-size: 0.95vw; color: var(--accent);
@@ -111,16 +107,27 @@ body {
   border-radius: 999px; padding: 0.1vh 0.5vw; letter-spacing: 0.1em;
 }
 
-.col-body { flex: 1 1 auto; min-height: 0; padding: 0.5vh 0.5vw; }
+/* col-body is a fixed-height viewport; the .workers track inside may be taller
+   and is auto-scrolled by JS when it overflows. */
+.col-body { flex: 1 1 auto; min-height: 0; padding: 0.5vh 0.5vw; overflow: hidden; position: relative; }
 .workers {
-  display: grid; grid-auto-flow: column; grid-template-rows: repeat(var(--rows, 20), 1fr);
-  gap: 0.25vh 0.5vw; height: 100%; align-content: stretch;
+  display: grid; grid-auto-flow: column;
+  grid-template-rows: repeat(var(--rows, 20), auto);
+  grid-auto-columns: 1fr;
+  gap: 0.25vh 0.5vw;
+  will-change: transform;
 }
 .worker {
   display: flex; align-items: center; gap: 0.5vw;
-  padding: 0.15vh 0.5vw; border-radius: 7px; min-width: 0;
+  padding: 0.28vh 0.5vw; border-radius: 7px; min-width: 0;
   background: rgba(255,255,255,0.02);
 }
+/* subtle fade at the top/bottom edges so scrolling looks clean */
+.col-body::before, .col-body::after {
+  content: ""; position: absolute; left: 0; right: 0; height: 3vh; z-index: 2; pointer-events: none;
+}
+.col-body::before { top: 0; background: linear-gradient(180deg, var(--panel) 0%, rgba(18,26,51,0) 100%); }
+.col-body::after { bottom: 0; background: linear-gradient(0deg, var(--panel2) 0%, rgba(15,23,48,0) 100%); }
 .worker .num {
   font-size: 0.68vw; font-weight: 800; color: #0b1020;
   border-radius: 6px; padding: 0.1vh 0.4vw; min-width: 1.8vw; text-align: center;

@@ -83,11 +83,11 @@
   function renderBoard() {
     const sec = state.data.sections[state.activeSection];
     const csi = currentShiftIndex();
-    const maxWorkers = Math.max(...sec.shifts.map((s) => s.workers.length), 1);
-    // rows per column: split into up to 2 sub-columns if very tall
     el('board').innerHTML = sec.shifts.map((sh, i) => {
       const isNow = i === csi;
-      const cols = sh.workers.length > 28 ? 2 : 1;
+      // Always use up to 2 sub-columns; rows flow naturally and may overflow
+      // the viewport (the list auto-scrolls to reveal everyone).
+      const cols = sh.workers.length > 16 ? 2 : 1;
       const rows = Math.ceil(sh.workers.length / cols) || 1;
       const workersHtml = sh.workers.map((w) => `
         <div class="worker">
@@ -152,29 +152,54 @@
     return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   }
 
-  /* ---------- auto-fit: scale font so the active view never scrolls ---------- */
+  /* ---------- auto-fit: shrink the GRID view so it never scrolls ----------
+     (The board view no longer shrinks — instead each column auto-scrolls
+      vertically to reveal long worker lists.) */
   function autoFit() {
-    // Adjust a global font scale by measuring overflow of the visible main region.
-    const view = state.layout === 'board' ? el('board') : el('gridView');
+    if (state.layout !== 'grid') return;
+    const view = el('gridView');
     if (!view) return;
     let scale = 1.0;
-    document.documentElement.style.setProperty('--fit', scale);
-    // Binary-ish shrink: reduce until no overflow (cap iterations)
     const maxH = view.clientHeight;
     for (let i = 0; i < 8; i++) {
       const overflow = view.scrollHeight - maxH;
       if (overflow <= 2) break;
       scale *= 0.94;
-      applyScale(scale);
+      view.querySelectorAll('.grows').forEach((n) => { n.style.fontSize = scale + 'em'; });
     }
   }
-  function applyScale(scale) {
-    // Scale worker text via a CSS var multiplier on relevant elements
-    const root = document.documentElement;
-    root.style.setProperty('--wscale', scale);
-    document.querySelectorAll('.workers, .grows').forEach((n) => {
-      n.style.fontSize = (scale) + 'em';
-    });
+
+  /* ---------- board column auto-scroll engine ----------
+     Each shift column's worker list gently scrolls up when it's taller than
+     its viewport, pauses at the top and bottom, then loops back to the top.
+     Runs on requestAnimationFrame; restarted on every board re-render. */
+  let scrollRAF = null;
+  const SCROLL_SPEED = 14;   // px per second
+  const PAUSE_MS = 3500;     // pause at top and bottom
+  function startColumnScroll() {
+    if (scrollRAF) { cancelAnimationFrame(scrollRAF); scrollRAF = null; }
+    if (state.layout !== 'board') return;
+    const tracks = Array.from(document.querySelectorAll('#board .col-body')).map((body) => {
+      const track = body.querySelector('.workers');
+      const max = Math.max(0, track.scrollHeight - body.clientHeight);
+      track.style.transform = 'translateY(0)';
+      return { track, max, y: 0, dir: 1, pausedUntil: performance.now() + PAUSE_MS };
+    }).filter((t) => t.max > 4); // only scroll columns that actually overflow
+    if (!tracks.length) return;
+    let last = performance.now();
+    function frame(now) {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      for (const t of tracks) {
+        if (now < t.pausedUntil) continue;
+        t.y += t.dir * SCROLL_SPEED * dt;
+        if (t.y >= t.max) { t.y = t.max; t.dir = -1; t.pausedUntil = now + PAUSE_MS; }
+        else if (t.y <= 0) { t.y = 0; t.dir = 1; t.pausedUntil = now + PAUSE_MS; }
+        t.track.style.transform = `translateY(${-t.y}px)`;
+      }
+      scrollRAF = requestAnimationFrame(frame);
+    }
+    scrollRAF = requestAnimationFrame(frame);
   }
 
   function renderAll() {
@@ -186,7 +211,10 @@
     renderTabs();
     renderLegend();
     if (state.layout === 'board') renderBoard(); else renderGrid();
-    requestAnimationFrame(() => requestAnimationFrame(autoFit));
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      autoFit();
+      startColumnScroll();
+    }));
   }
 
   /* ---------- data load + refresh ---------- */
