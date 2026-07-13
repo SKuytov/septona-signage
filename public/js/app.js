@@ -96,7 +96,7 @@
           </span>
         </div>`).join('');
       return `
-        <section class="col">
+        <section class="col ${isNow ? 'col-now' : 'col-dim'}">
           <div class="col-head ${isNow ? 'now' : ''}">
             <span class="cdot" style="background:${SHIFT_COLORS[i]}"></span>
             <span class="ctitle">${sh.label}</span>

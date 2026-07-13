@@ -27,6 +27,20 @@
     .result.ok { background: rgba(63,169,245,.12); border: 1px solid #3fa9f5; display: block; }
     .result.err { background: rgba(255,80,80,.12); border: 1px solid #ff5050; display: block; }
     .result h3 { margin-bottom: 8px; }
+    .diff { margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.12); }
+    .diff h4 { font-size: 14px; margin-bottom: 10px; color: #cfe0ff; }
+    .diff-empty { color: #7ee29a; font-size: 13px; }
+    .diff-sum { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .dpill { padding: 4px 11px; border-radius: 999px; font-size: 12px; font-weight: 800; }
+    .dpill.add { background: #16351f; color: #7ee29a; border: 1px solid #2f7a45; }
+    .dpill.rem { background: #3a1620; color: #ff8a8a; border: 1px solid #7a2f3f; }
+    .dpill.chg { background: #2a2416; color: #ffc57a; border: 1px solid #7a5a2f; }
+    .dgrp { font-size: 13px; margin-bottom: 10px; line-height: 1.55; color: #c7d2ee; }
+    .dgrp b.add { color: #7ee29a; } .dgrp b.rem { color: #ff8a8a; } .dgrp b.chg { color: #ffc57a; }
+    .dmeta { color: #7b8bb6; font-size: 12px; }
+    .dchglist { margin-top: 6px; max-height: 260px; overflow: auto; display: flex; flex-direction: column; gap: 4px; }
+    .dchg { font-size: 12.5px; color: #c7d2ee; padding: 3px 0; }
+    .dchg b { color: #fff; }
     .sec-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #22315a; }
     .lines { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
     .li { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #9fb0d6; }
@@ -115,6 +129,35 @@
     const result = document.getElementById('result');
     let file = null;
 
+    // Week-to-week comparison block (rendered under the upload result).
+    function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+    function renderDiff(d){
+      if(!d.diff) return '';
+      const c=d.diff.counts;
+      if(!c.added && !c.removed && !c.changed){
+        return `<div class="diff"><h4>Сравнение с предходния график</h4><div class="diff-empty">Няма промени спрямо „${esc(d.prevPeriod||'предходния период')}“.</div></div>`;
+      }
+      let h=`<div class="diff"><h4>Сравнение с „${esc(d.prevPeriod||'предходния')}“</h4>`;
+      h+=`<div class="diff-sum"><span class="dpill add">+${c.added} нови</span><span class="dpill rem">−${c.removed} отпаднали</span><span class="dpill chg">${c.changed} променени</span></div>`;
+      const cap=(arr,n)=>arr.slice(0,n);
+      if(c.added){
+        h+=`<div class="dgrp"><b class="add">Нови (${c.added}):</b> `+cap(d.diff.added,40).map(x=>`${esc(x.name)} <span class="dmeta">(${esc(x.section)} · ${esc(x.shift)})</span>`).join(', ')+(c.added>40?' …':'')+`</div>`;
+      }
+      if(c.removed){
+        h+=`<div class="dgrp"><b class="rem">Отпаднали (${c.removed}):</b> `+cap(d.diff.removed,40).map(x=>`${esc(x.name)} <span class="dmeta">(${esc(x.section)} · ${esc(x.shift)})</span>`).join(', ')+(c.removed>40?' …':'')+`</div>`;
+      }
+      if(c.changed){
+        h+=`<div class="dgrp"><b class="chg">Променени (${c.changed}):</b><div class="dchglist">`+cap(d.diff.changed,60).map(x=>{
+          const parts=[];
+          if(x.changes.section) parts.push(`цех: ${esc(x.changes.section.from)} → ${esc(x.changes.section.to)}`);
+          if(x.changes.shift) parts.push(`смяна: ${esc(x.changes.shift.from)} → ${esc(x.changes.shift.to)}`);
+          if(x.changes.line) parts.push(`линия: ${esc(x.changes.line.from||'—')} → ${esc(x.changes.line.to||'—')}`);
+          return `<div class="dchg"><b>${esc(x.name)}</b> — ${parts.join('; ')}</div>`;
+        }).join('')+(c.changed>60?'<div class="dchg">…</div>':'')+`</div></div>`;
+      }
+      return h+`</div>`;
+    }
+
     drop.addEventListener('click', () => fileInput.click());
     drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('drag'); });
     drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
@@ -146,7 +189,7 @@
           d.sections.map(s => `<div class="sec-row"><span>${s.name}</span><span>${s.total} (${s.shifts.join(' / ')})</span></div>`).join('') +
           `</div><div class="lines">` +
           d.lines.map(l => `<span class="li"><span class="sw" style="background:${l.color}"></span>${l.name}</span>`).join('') +
-          `</div>`;
+          `</div>` + renderDiff(d);
       } catch (e) {
         result.className = 'result err';
         result.innerHTML = '<h3>Грешка</h3><div>' + e.message + '</div>';

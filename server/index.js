@@ -219,6 +219,37 @@ app.get('/api/status', (req, res) => {
   } catch (e) { res.json({ loaded: false }); }
 });
 
+// Build a flat name -> {section, shift, line} index from a parsed schedule,
+// so we can compare last week's schedule with the new upload.
+function indexByName(sched) {
+  const map = new Map();
+  (sched.sections || []).forEach((sec) => (sec.shifts || []).forEach((sh) => (sh.workers || []).forEach((w) => {
+    const key = String(w.name || '').trim().toLowerCase();
+    if (key) map.set(key, { name: w.name, section: sec.name, shift: sh.label, line: w.line || '' });
+  })));
+  return map;
+}
+
+// Compare previous vs new schedule -> {added[], removed[], changed[]}
+function diffSchedules(prev, next) {
+  const a = indexByName(prev), b = indexByName(next);
+  const added = [], removed = [], changed = [];
+  for (const [k, nw] of b) {
+    if (!a.has(k)) { added.push({ name: nw.name, section: nw.section, shift: nw.shift, line: nw.line }); continue; }
+    const ow = a.get(k);
+    const ch = {};
+    if (ow.section !== nw.section) ch.section = { from: ow.section, to: nw.section };
+    if (ow.shift !== nw.shift) ch.shift = { from: ow.shift, to: nw.shift };
+    if (ow.line !== nw.line) ch.line = { from: ow.line, to: nw.line };
+    if (Object.keys(ch).length) changed.push({ name: nw.name, section: nw.section, changes: ch });
+  }
+  for (const [k, ow] of a) if (!b.has(k)) removed.push({ name: ow.name, section: ow.section, shift: ow.shift });
+  return {
+    added, removed, changed,
+    counts: { added: added.length, removed: removed.length, changed: changed.length },
+  };
+}
+
 // Upload + parse a new weekly xlsx
 app.post('/api/upload', requireAdmin, (req, res) => {
   upload.single('file')(req, res, async (err) => {
@@ -226,14 +257,27 @@ app.post('/api/upload', requireAdmin, (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Няма качен файл.' });
     try {
       const data = await parseScheduleBuffer(req.file.buffer);
-      // archive raw upload
+      // compute a diff vs the currently-loaded schedule (before overwriting)
+      let diff = null, prevPeriod = null;
+      if (fs.existsSync(DATA_FILE)) {
+        try {
+          const prev = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+          prevPeriod = prev.period || null;
+          diff = diffSchedules(prev, data);
+        } catch (e) { /* ignore malformed previous */ }
+      }
+      // archive raw upload + the previous parsed schedule
       const stamp = new Date().toISOString().replace(/[:.]/g, '-');
       fs.writeFileSync(path.join(UPLOAD_DIR, `${stamp}.xlsx`), req.file.buffer);
+      if (fs.existsSync(DATA_FILE)) {
+        try { fs.copyFileSync(DATA_FILE, path.join(UPLOAD_DIR, `schedule-${stamp}.json`)); } catch (e) {}
+      }
       fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
       res.json({
         ok: true, period: data.period, grandTotal: data.grandTotal,
         sections: data.sections.map((s) => ({ name: s.name, total: s.total, shifts: s.shifts.map((x) => x.count) })),
         lines: data.lines.map((l) => ({ name: l.name, color: l.color })),
+        prevPeriod, diff,
       });
     } catch (e) {
       console.error(e);

@@ -90,7 +90,14 @@ body {
   background: linear-gradient(180deg, var(--panel), var(--panel2));
   border: 1px solid var(--line); border-radius: 14px;
   display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+  transition: opacity .6s ease, box-shadow .6s ease, filter .6s ease;
 }
+/* Auto-highlight the current shift: brighten the active column, dim the others. */
+.col-now {
+  box-shadow: 0 0 0 2px var(--accent), 0 0 34px rgba(255,176,32,0.18);
+  border-color: var(--accent);
+}
+.col-dim { opacity: 0.5; filter: saturate(0.75); }
 .col-head {
   display: flex; align-items: center; gap: 0.6vw;
   padding: 0.8vh 1vw; border-bottom: 1px solid var(--line); flex: 0 0 auto;
@@ -174,7 +181,11 @@ body {
   font-size: 0.85vw; font-weight: 900; font-variant-numeric: tabular-nums;
   box-shadow: inset 0 0 0 1px rgba(0,0,0,0.28);
 }
-.foot-right { margin-left: auto; font-size: 0.72vw; color: var(--ink-faint); }
+.foot-right { margin-left: auto; font-size: 0.72vw; color: var(--ink-faint); display: flex; align-items: center; gap: 1vw; }
+.qr-box { display: flex; flex-direction: column; align-items: center; gap: 0.25vh; }
+.qr-img { background: #fff; padding: 0.35vh; border-radius: 6px; line-height: 0; }
+.qr-img img { width: 4.6vw; height: 4.6vw; display: block; image-rendering: pixelated; }
+.qr-cap { font-size: 0.6vw; color: var(--ink-dim); letter-spacing: 0.04em; }
 
 /* ---------------- CONTROLS ---------------- */
 .controls { position: fixed; right: 1vw; bottom: 1vh; display: flex; gap: 0.5vw; z-index: 50; opacity: 0.25; transition: opacity .2s; }

@@ -50,6 +50,10 @@
     <footer class="footer">
       <div class="legend" id="legend"></div>
       <div class="foot-right">
+        <div class="qr-box" id="qrBox" title="Сканирайте за вашата смяна и линия">
+          <div class="qr-img" id="qrImg"></div>
+          <span class="qr-cap">Сканирай → твоята смяна</span>
+        </div>
         <span id="footAddr">„Септона България" АД · бул. Липник 155, Русе 7005 · 082/844-267</span>
       </div>
     </footer>
@@ -102,6 +106,20 @@
     </div>
   </div>
 
+  <script src="/js/vendor/qrcode.min.js"></script>
+  <script>
+    // Footer QR → links to the per-employee lookup page on this same host,
+    // so anyone can scan and instantly see their shift + bus line on their phone.
+    (function () {
+      try {
+        var url = location.origin + '/me.html';
+        var qr = qrcode(0, 'M');
+        qr.addData(url);
+        qr.make();
+        document.getElementById('qrImg').innerHTML = qr.createImgTag(3, 0);
+      } catch (e) { var b = document.getElementById('qrBox'); if (b) b.style.display = 'none'; }
+    })();
+  </script>
   <script src="/js/app.js"></script>
 </body>
 </html>

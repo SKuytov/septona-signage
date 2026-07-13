@@ -12,7 +12,7 @@
     .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
     .top h1 { font-size: 22px; }
     .top .sub { color: #9fb0d6; font-size: 14px; margin-top: 2px; }
-    .top-actions { display: flex; gap: 10px; align-items: center; }
+    .top-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
     button { padding: 11px 18px; border: none; border-radius: 10px; font-weight: 800; font-size: 14px; cursor: pointer; font-family: inherit; }
     button.primary { background: #ffb020; color: #0b1020; }
     button.ghost { background: transparent; color: #9fb0d6; border: 1px solid #33477e; }
@@ -22,6 +22,24 @@
     .card { background: linear-gradient(180deg, #121a33, #0f1730); border: 1px solid #223056; border-radius: 16px; padding: 20px; margin-bottom: 20px; }
     .card h2 { font-size: 16px; margin-bottom: 4px; }
     .card .hint { color: #9fb0d6; font-size: 13px; margin-bottom: 14px; }
+
+    /* ---- toolbar (search / warnings / bulk) ---- */
+    .toolbar { position: sticky; top: 0; z-index: 40; background: linear-gradient(180deg, #101830, #0d1428); border: 1px solid #223056; border-radius: 14px; padding: 12px 16px; margin-bottom: 18px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .toolbar .search { flex: 1 1 260px; display: flex; align-items: center; gap: 8px; background: #0b1020; border: 1px solid #33477e; border-radius: 10px; padding: 8px 12px; }
+    .toolbar .search input { flex: 1; background: transparent; border: none; color: #eaf0ff; font-size: 15px; font-family: inherit; outline: none; }
+    .toolbar .search .clr { color: #9fb0d6; cursor: pointer; font-size: 16px; }
+    .warn-pill { padding: 7px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .warn-pill.ok { background: #16351f; color: #7ee29a; border: 1px solid #2f7a45; }
+    .warn-pill.bad { background: #3a2a16; color: #ffc57a; border: 1px solid #7a5a2f; }
+    .filter-toggle { display: flex; align-items: center; gap: 6px; color: #9fb0d6; font-size: 13px; cursor: pointer; user-select: none; }
+    .filter-toggle input { width: 16px; height: 16px; }
+
+    /* ---- bulk bar ---- */
+    .bulkbar { display: none; align-items: center; gap: 12px; background: #16244a; border: 1px solid #33477e; border-radius: 12px; padding: 10px 16px; margin-bottom: 16px; flex-wrap: wrap; position: sticky; top: 66px; z-index: 39; }
+    .bulkbar.show { display: flex; }
+    .bulkbar .cnt { font-weight: 800; color: #ffb020; }
+    .bulkbar select { padding: 8px 10px; border-radius: 8px; border: 1px solid #33477e; background: #0b1020; color: #eaf0ff; font-family: inherit; font-size: 13px; }
+
     /* legend editor */
     .lines { display: flex; flex-direction: column; gap: 8px; }
     .line-row { display: grid; grid-template-columns: 34px 1fr 120px 40px; gap: 10px; align-items: center; }
@@ -29,8 +47,9 @@
     input[type=text] { width: 100%; padding: 9px 12px; border-radius: 9px; border: 1px solid #33477e; background: #0f1730; color: #eaf0ff; font-size: 14px; font-family: inherit; }
     input[type=color] { width: 100%; height: 38px; border: 1px solid #33477e; border-radius: 9px; background: #0f1730; cursor: pointer; padding: 3px; }
     .del { background: #3a2030; color: #ff8a8a; border: 1px solid #5a2a3a; }
-    /* sections / shifts */
-    .sec-title { display: flex; align-items: center; gap: 10px; margin: 6px 0 12px; }
+
+    /* sections / shifts / people */
+    .sec-title { display: flex; align-items: center; gap: 10px; margin: 6px 0 12px; flex-wrap: wrap; }
     .sec-title h2 { font-size: 18px; }
     .sec-title .tot { color: #9fb0d6; font-size: 13px; }
     .shifts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
@@ -38,16 +57,18 @@
     .shift { background: rgba(255,255,255,.02); border: 1px solid #22315a; border-radius: 12px; padding: 12px; min-height: 80px; }
     .shift.dragover { border-color: #ffb020; background: rgba(255,176,32,.08); }
     .card.sec-dragover { border-color: #ffb020; box-shadow: 0 0 0 2px rgba(255,176,32,.35); }
-    .sec-title { cursor: default; }
-    .sec-title.drop-hint { border-radius: 10px; }
     .shift-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
     .shift-head .lbl { font-weight: 800; }
     .shift-head .time { color: #9fb0d6; font-size: 12px; }
     .shift-head .cnt { color: #6b7ba6; font-size: 12px; }
     .people { display: flex; flex-direction: column; gap: 6px; min-height: 30px; }
-    .person { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: center; background: #0f1730; border: 1px solid #22315a; border-radius: 9px; padding: 7px 9px; cursor: grab; }
+    .person { display: grid; grid-template-columns: 22px 26px 1fr auto; gap: 8px; align-items: center; background: #0f1730; border: 1px solid #22315a; border-radius: 9px; padding: 7px 9px; cursor: grab; }
     .person:active { cursor: grabbing; }
     .person.dragging { opacity: .4; }
+    .person.incomplete { border-color: #7a5a2f; box-shadow: inset 3px 0 0 #ffc57a; }
+    .person.hidden { display: none; }
+    .person.match { box-shadow: 0 0 0 2px #ffb020; }
+    .person .sel { width: 18px; height: 18px; cursor: pointer; }
     .person .pnum { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; color: #0b1020; font-size: 12px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.3); }
     .person .pmain { min-width: 0; }
     .person .pname { font-weight: 700; font-size: 14px; }
@@ -55,18 +76,21 @@
     .person .pname[contenteditable]:focus { border-bottom-color: #ffb020; }
     .person .ploc { color: #9fb0d6; font-size: 12px; }
     .person .ploc[contenteditable]:focus { border-bottom: 1px dashed #ffb020; outline: none; }
+    .person .ploc.missing { color: #ffc57a; font-style: italic; }
     .person .pctrl { display: flex; gap: 6px; align-items: center; }
     .person select { padding: 5px 6px; border-radius: 7px; border: 1px solid #33477e; background: #0b1020; color: #eaf0ff; font-size: 12px; font-family: inherit; max-width: 150px; }
+    .person select.missing { border-color: #7a5a2f; color: #ffc57a; }
     .person input[type=color] { width: 30px; height: 30px; padding: 2px; }
     .person .px { background: transparent; border: none; color: #ff7a7a; font-size: 18px; cursor: pointer; line-height: 1; padding: 0 4px; }
-    .row-move { display: flex; gap: 6px; align-items: center; margin-top: 10px; }
-    .row-move select { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #33477e; background: #0b1020; color: #eaf0ff; font-family: inherit; }
-    .status { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 12px 22px; border-radius: 12px; font-weight: 700; font-size: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.4); display: none; z-index: 50; }
+    .row-move { display: flex; gap: 6px; align-items: center; margin-top: 6px; margin-left: 30px; }
+    .row-move select { flex: 1; padding: 7px; border-radius: 8px; border: 1px solid #33477e; background: #0b1020; color: #eaf0ff; font-family: inherit; font-size: 12px; }
+    .status { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 12px 22px; border-radius: 12px; font-weight: 700; font-size: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.4); display: none; z-index: 60; }
     .status.ok { background: #16351f; color: #7ee29a; border: 1px solid #2f7a45; display: block; }
     .status.err { background: #3a1620; color: #ff8a8a; border: 1px solid #7a2f3f; display: block; }
     .status.info { background: #16244a; color: #9fc2ff; border: 1px solid #33477e; display: block; }
     .empty { color: #6b7ba6; font-size: 13px; padding: 8px; text-align: center; }
     .add-person { margin-top: 8px; }
+    .sec-empty-note { color: #6b7ba6; font-size: 13px; }
   </style>
 </head>
 <body>
@@ -78,10 +102,35 @@
     <div class="top-actions">
       <a href="/admin.html">← Качване</a>
       <a href="/messages.html">Съобщения</a>
+      <button class="ghost" id="undo" title="Върни последната промяна" disabled>↶ Отмени</button>
       <button class="primary" id="save">Запази промените</button>
       <button class="ghost" id="reload">Презареди</button>
       <button class="ghost" id="logout">Изход</button>
     </div>
+  </div>
+
+  <!-- ============ TOOLBAR: search / warnings / filter ============ -->
+  <div class="toolbar">
+    <div class="search">
+      <span>🔎</span>
+      <input type="text" id="search" placeholder="Търси по име или локация…" autocomplete="off" />
+      <span class="clr" id="searchClr" title="Изчисти">✕</span>
+    </div>
+    <div class="warn-pill ok" id="warnPill">Всичко е попълнено</div>
+    <label class="filter-toggle"><input type="checkbox" id="onlyIncomplete" /> Само непопълнени</label>
+    <label class="filter-toggle"><input type="checkbox" id="bulkMode" /> Групов избор</label>
+  </div>
+
+  <!-- ============ BULK ACTION BAR ============ -->
+  <div class="bulkbar" id="bulkbar">
+    <span class="cnt" id="bulkCnt">0 избрани</span>
+    <span>Премести в:</span>
+    <select id="bulkMoveSel"></select>
+    <button class="ghost small" id="bulkMoveBtn">Премести</button>
+    <span>Задай линия:</span>
+    <select id="bulkLineSel"></select>
+    <button class="ghost small" id="bulkLineBtn">Приложи</button>
+    <button class="ghost small" id="bulkClear">Изчисти избора</button>
   </div>
 
   <!-- ============ LINE LEGEND EDITOR ============ -->
@@ -99,6 +148,8 @@
 
   <script>
     let data = null;
+    const history = [];       // undo stack of JSON snapshots
+    const selected = new Set(); // set of worker objects selected in bulk mode
 
     const $ = (id) => document.getElementById(id);
     const esc = (s) => String(s == null ? '' : s);
@@ -108,6 +159,22 @@
       if (cls !== 'err') setTimeout(() => { if (s.textContent === msg) s.className = 'status'; }, 3500);
     }
 
+    /* ---------- UNDO ---------- */
+    function snapshot() {
+      // push a deep copy of the current data before a mutation
+      history.push(JSON.stringify(data));
+      if (history.length > 50) history.shift();
+      $('undo').disabled = history.length === 0;
+    }
+    $('undo').addEventListener('click', () => {
+      if (!history.length) return;
+      data = JSON.parse(history.pop());
+      $('undo').disabled = history.length === 0;
+      selected.clear();
+      render();
+      showStatus('Последната промяна е отменена.', 'info');
+    });
+
     async function load() {
       try {
         const r = await fetch('/api/schedule', { cache: 'no-store' });
@@ -115,11 +182,33 @@
         if (r.status === 404) { showStatus('Няма зареден график. Качете .xlsx файл първо.', 'info'); return; }
         if (!r.ok) throw new Error('Грешка при зареждане');
         data = await r.json();
-        // ensure lineNo present
         (data.lines || []).forEach((l, i) => { l.lineNo = i + 1; });
         $('periodSub').textContent = data.period || '';
+        history.length = 0; $('undo').disabled = true;
+        selected.clear();
         render();
       } catch (e) { showStatus(e.message, 'err'); }
+    }
+
+    /* ---------- helpers ---------- */
+    function toHex6(c) {
+      c = String(c || '#FFFFFF');
+      if (/^#[0-9a-fA-F]{3}$/.test(c)) c = '#' + c.slice(1).split('').map(x => x + x).join('');
+      return /^#[0-9a-fA-F]{6}$/.test(c) ? c : '#FFFFFF';
+    }
+    function lineColor(name) { const l = (data.lines || []).find((x) => x.name === name); return l ? l.color : '#FFFFFF'; }
+    function lineNoOf(name) { const i = (data.lines || []).findIndex((x) => x.name === name); return i > -1 ? i + 1 : ''; }
+    function textOn(hex) {
+      hex = toHex6(hex).slice(1);
+      const r = parseInt(hex.slice(0,2),16), g = parseInt(hex.slice(2,4),16), b = parseInt(hex.slice(4,6),16);
+      return (0.299*r + 0.587*g + 0.114*b) > 150 ? '#0b1020' : '#ffffff';
+    }
+    function personBadgeColor(w) { return w.color || lineColor(w.line); }
+    function isIncomplete(w) { return !w.line || !String(w.location || '').trim(); }
+    function allWorkers() {
+      const out = [];
+      data.sections.forEach((sec, si) => sec.shifts.forEach((sh, shi) => (sh.workers||[]).forEach((w) => out.push({ w, si, shi }))));
+      return out;
     }
 
     /* ---------- line legend ---------- */
@@ -134,14 +223,17 @@
           <input type="text" value="${esc(l.name).replace(/"/g, '&quot;')}" data-k="name" />
           <input type="color" value="${toHex6(l.color)}" data-k="color" />
           <button class="del small" title="Изтрий">✕</button>`;
+        row.querySelector('[data-k=name]').addEventListener('focus', snapshot, { once: true });
         row.querySelector('[data-k=name]').addEventListener('input', (e) => { l.name = e.target.value; });
         row.querySelector('[data-k=color]').addEventListener('input', (e) => {
+          snapshot();
           l.color = e.target.value.toUpperCase();
           row.querySelector('.badge').style.background = l.color;
           refreshPeopleBadges();
         });
         row.querySelector('.del').addEventListener('click', () => {
           if (!confirm('Изтриване на линия „' + (l.name || '') + '“?')) return;
+          snapshot();
           data.lines.splice(idx, 1);
           data.lines.forEach((x, i) => { x.lineNo = i + 1; });
           renderLines(); renderSections();
@@ -149,98 +241,97 @@
         box.appendChild(row);
       });
     }
-    function toHex6(c) {
-      c = String(c || '#FFFFFF');
-      if (/^#[0-9a-fA-F]{3}$/.test(c)) c = '#' + c.slice(1).split('').map(x => x + x).join('');
-      return /^#[0-9a-fA-F]{6}$/.test(c) ? c : '#FFFFFF';
-    }
     $('addLine').addEventListener('click', () => {
+      snapshot();
       data.lines = data.lines || [];
       data.lines.push({ name: 'нова линия', color: '#FFFFFF', lineNo: data.lines.length + 1 });
       renderLines(); renderSections();
     });
 
-    /* ---------- sections / shifts / people ---------- */
-    function lineColor(name) {
-      const l = (data.lines || []).find((x) => x.name === name);
-      return l ? l.color : '#FFFFFF';
+    /* ---------- warnings ---------- */
+    function refreshWarnings() {
+      const bad = allWorkers().filter((x) => isIncomplete(x.w)).length;
+      const pill = $('warnPill');
+      if (bad === 0) { pill.className = 'warn-pill ok'; pill.textContent = 'Всичко е попълнено'; }
+      else { pill.className = 'warn-pill bad'; pill.textContent = `⚠ ${bad} непопълнени (клик за филтър)`; }
     }
-    function lineNoOf(name) {
-      const i = (data.lines || []).findIndex((x) => x.name === name);
-      return i > -1 ? i + 1 : '';
-    }
-    function textOn(hex) {
-      hex = toHex6(hex).slice(1);
-      const r = parseInt(hex.slice(0,2),16), g = parseInt(hex.slice(2,4),16), b = parseInt(hex.slice(4,6),16);
-      return (0.299*r + 0.587*g + 0.114*b) > 150 ? '#0b1020' : '#ffffff';
-    }
+    $('warnPill').addEventListener('click', () => {
+      if ($('warnPill').classList.contains('bad')) { $('onlyIncomplete').checked = true; applyFilter(); }
+    });
 
-    function personBadgeColor(w) {
-      // explicit per-person color wins, else inherit from line
-      return w.color || lineColor(w.line);
-    }
-
+    /* ---------- badges refresh ---------- */
     function refreshPeopleBadges() {
       document.querySelectorAll('.person').forEach((el) => {
-        const w = el.__worker;
-        if (!w) return;
+        const w = el.__worker; if (!w) return;
         const c = personBadgeColor(w);
         const b = el.querySelector('.pnum');
-        b.style.background = c; b.style.color = textOn(c);
-        b.textContent = lineNoOf(w.line);
+        b.style.background = c; b.style.color = textOn(c); b.textContent = lineNoOf(w.line);
       });
     }
 
-    function lineOptions(selected) {
+    function lineOptions(selectedName) {
       let html = '<option value="">— без линия —</option>';
       (data.lines || []).forEach((l) => {
-        html += `<option value="${esc(l.name).replace(/"/g,'&quot;')}" ${l.name === selected ? 'selected' : ''}>${(l.lineNo || '')} · ${esc(l.name)}</option>`;
+        html += `<option value="${esc(l.name).replace(/"/g,'&quot;')}" ${l.name === selectedName ? 'selected' : ''}>${(l.lineNo || '')} · ${esc(l.name)}</option>`;
       });
       return html;
     }
 
+    /* ---------- person row ---------- */
     function makePerson(w, secIdx, shIdx) {
       const el = document.createElement('div');
-      el.className = 'person';
+      el.className = 'person' + (isIncomplete(w) ? ' incomplete' : '');
       el.draggable = true;
       el.__worker = w; el.__sec = secIdx; el.__sh = shIdx;
       const c = personBadgeColor(w);
+      const bulkOn = $('bulkMode').checked;
       el.innerHTML = `
+        <input type="checkbox" class="sel" ${bulkOn ? '' : 'style="visibility:hidden"'} ${selected.has(w) ? 'checked' : ''} />
         <div class="pnum" style="background:${c};color:${textOn(c)}">${lineNoOf(w.line)}</div>
         <div class="pmain">
           <div class="pname" contenteditable spellcheck="false">${esc(w.name)}</div>
-          <div class="ploc" contenteditable spellcheck="false">${esc(w.location)}</div>
+          <div class="ploc ${String(w.location||'').trim()?'':'missing'}" contenteditable spellcheck="false">${esc(w.location) || 'няма локация'}</div>
         </div>
         <div class="pctrl">
-          <select class="lineSel" title="Автобусна линия">${lineOptions(w.line)}</select>
+          <select class="lineSel ${w.line?'':'missing'}" title="Автобусна линия">${lineOptions(w.line)}</select>
           <input type="color" class="colSel" title="Собствен цвят (по избор)" value="${toHex6(personBadgeColor(w))}" />
           <button class="px" title="Премахни от списъка">✕</button>
         </div>`;
-      // edit name/location
-      el.querySelector('.pname').addEventListener('input', (e) => { w.name = e.target.textContent.trim(); });
-      el.querySelector('.ploc').addEventListener('input', (e) => { w.location = e.target.textContent.trim(); });
-      // line change -> update color to inherit unless custom set
-      const lineSel = el.querySelector('.lineSel');
-      const colSel = el.querySelector('.colSel');
+      // selection checkbox
+      el.querySelector('.sel').addEventListener('change', (e) => {
+        if (e.target.checked) selected.add(w); else selected.delete(w);
+        refreshBulk();
+      });
+      // name/location edit
+      const pn = el.querySelector('.pname'), pl = el.querySelector('.ploc');
+      pn.addEventListener('focus', snapshot, { once: true });
+      pn.addEventListener('input', (e) => { w.name = e.target.textContent.trim(); });
+      pl.addEventListener('focus', function () { snapshot(); if (pl.classList.contains('missing')) { pl.textContent = ''; pl.classList.remove('missing'); } }, { once: true });
+      pl.addEventListener('input', (e) => { w.location = e.target.textContent.trim(); });
+      pl.addEventListener('blur', () => { el.classList.toggle('incomplete', isIncomplete(w)); refreshWarnings(); });
+      // line + color
+      const lineSel = el.querySelector('.lineSel'), colSel = el.querySelector('.colSel');
       lineSel.addEventListener('change', (e) => {
-        w.line = e.target.value;
-        // when line changes, drop custom color so it inherits the new line color
-        delete w.color;
-        const nc = personBadgeColor(w);
-        colSel.value = toHex6(nc);
+        snapshot();
+        w.line = e.target.value; delete w.color;
+        const nc = personBadgeColor(w); colSel.value = toHex6(nc);
         const b = el.querySelector('.pnum');
         b.style.background = nc; b.style.color = textOn(nc); b.textContent = lineNoOf(w.line);
+        lineSel.classList.toggle('missing', !w.line);
+        el.classList.toggle('incomplete', isIncomplete(w));
+        refreshWarnings();
       });
       colSel.addEventListener('input', (e) => {
-        w.color = e.target.value.toUpperCase(); // explicit per-person override
-        const b = el.querySelector('.pnum');
-        b.style.background = w.color; b.style.color = textOn(w.color);
+        snapshot();
+        w.color = e.target.value.toUpperCase();
+        const b = el.querySelector('.pnum'); b.style.background = w.color; b.style.color = textOn(w.color);
       });
       el.querySelector('.px').addEventListener('click', () => {
         if (!confirm('Премахване на „' + (w.name || '') + '“ от списъка?')) return;
+        snapshot();
         const arr = data.sections[secIdx].shifts[shIdx].workers;
-        const i = arr.indexOf(w);
-        if (i > -1) arr.splice(i, 1);
+        const i = arr.indexOf(w); if (i > -1) arr.splice(i, 1);
+        selected.delete(w);
         renderSections();
       });
       // drag
@@ -255,27 +346,25 @@
     }
 
     let dragCtx = null;
-
     function moveWorker(w, fromSec, fromSh, toSec, toSh) {
       if (fromSec === toSec && fromSh === toSh) return;
+      snapshot();
       const src = data.sections[fromSec].shifts[fromSh].workers;
-      const i = src.indexOf(w);
-      if (i > -1) src.splice(i, 1);
+      const i = src.indexOf(w); if (i > -1) src.splice(i, 1);
       data.sections[toSec].shifts[toSh].workers.push(w);
       renderSections();
     }
 
     function shiftOptions(curSec, curSh) {
       let html = '';
-      data.sections.forEach((sec, si) => {
-        sec.shifts.forEach((sh, shi) => {
-          const isCur = si === curSec && shi === curSh;
-          html += `<option value="${si}:${shi}" ${isCur ? 'selected' : ''}>${esc(sec.name)} · ${esc(sh.label)}</option>`;
-        });
-      });
+      data.sections.forEach((sec, si) => sec.shifts.forEach((sh, shi) => {
+        const cur = si === curSec && shi === curSh;
+        html += `<option value="${si}:${shi}" ${cur ? 'selected' : ''}>${esc(sec.name)} · ${esc(sh.label)}</option>`;
+      }));
       return html;
     }
 
+    /* ---------- render sections ---------- */
     function renderSections() {
       const root = $('sections');
       root.innerHTML = '';
@@ -283,27 +372,15 @@
         const total = sec.shifts.reduce((a, s) => a + (s.workers ? s.workers.length : 0), 0);
         const card = document.createElement('div');
         card.className = 'card';
-        card.innerHTML = `<div class="sec-title"><h2>${esc(sec.name)}</h2><span class="tot">${total} души общо</span><span class="tot" style="color:#6b7ba6">— пуснете човек върху цеха, за да го преместите тук</span></div>`;
-        // Whole-section drop target: dropping onto the section (header or empty area)
-        // moves the person into this section, keeping the same shift index when possible.
-        card.addEventListener('dragover', (ev) => {
-          if (!dragCtx) return;
-          ev.preventDefault(); ev.dataTransfer.dropEffect = 'move';
-          card.classList.add('sec-dragover');
-        });
-        card.addEventListener('dragleave', (ev) => {
-          // only clear when leaving the card entirely
-          if (!card.contains(ev.relatedTarget)) card.classList.remove('sec-dragover');
-        });
+        card.innerHTML = `<div class="sec-title"><h2>${esc(sec.name)}</h2><span class="tot">${total} души общо</span><span class="sec-empty-note">— пуснете човек върху цеха, за да го преместите тук</span></div>`;
+        card.addEventListener('dragover', (ev) => { if (!dragCtx) return; ev.preventDefault(); ev.dataTransfer.dropEffect = 'move'; card.classList.add('sec-dragover'); });
+        card.addEventListener('dragleave', (ev) => { if (!card.contains(ev.relatedTarget)) card.classList.remove('sec-dragover'); });
         card.addEventListener('drop', (ev) => {
           card.classList.remove('sec-dragover');
           if (!dragCtx) return;
-          // If the drop already landed on a specific shift column, that column's
-          // handler ran first and cleared dragCtx via its own moveWorker->render.
-          // Guard: dragCtx still set means it was dropped on the section chrome.
           ev.preventDefault();
-          const targetSh = Math.min(dragCtx.shIdx, sec.shifts.length - 1);
-          moveWorker(dragCtx.w, dragCtx.secIdx, dragCtx.shIdx, si, targetSh < 0 ? 0 : targetSh);
+          const t = Math.min(dragCtx.shIdx, sec.shifts.length - 1);
+          moveWorker(dragCtx.w, dragCtx.secIdx, dragCtx.shIdx, si, t < 0 ? 0 : t);
         });
         const shiftsWrap = document.createElement('div');
         shiftsWrap.className = 'shifts';
@@ -313,30 +390,35 @@
           col.innerHTML = `<div class="shift-head"><div><span class="lbl">${esc(sh.label)}</span> <span class="time">${esc(sh.time)}</span></div><span class="cnt">${sh.workers ? sh.workers.length : 0}</span></div>`;
           const people = document.createElement('div');
           people.className = 'people';
-          (sh.workers || []).forEach((w) => people.appendChild(makePerson(w, si, shi)));
+          (sh.workers || []).forEach((w) => {
+            const pel = makePerson(w, si, shi);
+            people.appendChild(pel);
+            // touch/non-drag move select
+            const mv = document.createElement('div');
+            mv.className = 'row-move';
+            const sel = document.createElement('select');
+            sel.innerHTML = shiftOptions(si, shi);
+            sel.title = 'Премести в смяна';
+            sel.addEventListener('change', (e) => { const [ts, tsh] = e.target.value.split(':').map(Number); moveWorker(w, si, shi, ts, tsh); });
+            const lbl = document.createElement('span'); lbl.textContent = 'Премести:'; lbl.style.color = '#9fb0d6'; lbl.style.fontSize = '12px';
+            mv.appendChild(lbl); mv.appendChild(sel);
+            people.appendChild(mv);
+            pel.__moverow = mv;
+          });
           if (!sh.workers || !sh.workers.length) {
             const e = document.createElement('div'); e.className = 'empty'; e.textContent = 'няма — пуснете човек тук'; people.appendChild(e);
           }
           col.appendChild(people);
-          // add person button
           const addBtn = document.createElement('button');
           addBtn.className = 'ghost small add-person';
           addBtn.textContent = '+ Добави човек';
-          addBtn.addEventListener('click', () => {
-            sh.workers = sh.workers || [];
-            sh.workers.push({ name: 'Ново име', location: '', line: '', color: '' });
-            renderSections();
-          });
+          addBtn.addEventListener('click', () => { snapshot(); sh.workers = sh.workers || []; sh.workers.push({ name: 'Ново име', location: '', line: '', color: '' }); renderSections(); });
           col.appendChild(addBtn);
-          // move dropdown (accessibility / non-drag fallback) applies to the whole column? No—per person is better,
-          // but to keep it compact we provide drag + a per-column note. Drop handlers:
           col.addEventListener('dragover', (ev) => { ev.preventDefault(); col.classList.add('dragover'); ev.dataTransfer.dropEffect = 'move'; });
           col.addEventListener('dragleave', () => col.classList.remove('dragover'));
           col.addEventListener('drop', (ev) => {
-            ev.preventDefault();
-            ev.stopPropagation(); // don't also trigger the section-level drop
-            col.classList.remove('dragover');
-            card.classList.remove('sec-dragover');
+            ev.preventDefault(); ev.stopPropagation();
+            col.classList.remove('dragover'); card.classList.remove('sec-dragover');
             if (dragCtx) moveWorker(dragCtx.w, dragCtx.secIdx, dragCtx.shIdx, si, shi);
           });
           shiftsWrap.appendChild(col);
@@ -344,35 +426,72 @@
         card.appendChild(shiftsWrap);
         root.appendChild(card);
       });
-      // add per-person "move to" selects for touch devices (no drag)
-      addMoveSelects();
-    }
-
-    // For touch / non-drag: add a small "премести в" select under each person.
-    function addMoveSelects() {
-      document.querySelectorAll('.person').forEach((el) => {
-        const w = el.__worker, si = el.__sec, shi = el.__sh;
-        // avoid duplicates
-        if (el.nextSibling && el.nextSibling.classList && el.nextSibling.classList.contains('row-move')) return;
-        const mv = document.createElement('div');
-        mv.className = 'row-move';
-        const sel = document.createElement('select');
-        sel.innerHTML = shiftOptions(si, shi);
-        sel.title = 'Премести в смяна';
-        sel.addEventListener('change', (e) => {
-          const [ts, tsh] = e.target.value.split(':').map(Number);
-          moveWorker(w, si, shi, ts, tsh);
-        });
-        const lbl = document.createElement('span');
-        lbl.textContent = 'Премести:'; lbl.style.color = '#9fb0d6'; lbl.style.fontSize = '12px';
-        mv.appendChild(lbl); mv.appendChild(sel);
-        el.parentNode.insertBefore(mv, el.nextSibling);
-      });
+      refreshWarnings();
+      refreshBulk();
+      applyFilter();
+      populateBulkSelectors();
     }
 
     function render() { renderLines(); renderSections(); }
 
-    /* ---------- save ---------- */
+    /* ---------- SEARCH / FILTER ---------- */
+    function applyFilter() {
+      const q = $('search').value.trim().toLowerCase();
+      const onlyInc = $('onlyIncomplete').checked;
+      document.querySelectorAll('.person').forEach((el) => {
+        const w = el.__worker; if (!w) return;
+        const hay = (String(w.name||'') + ' ' + String(w.location||'')).toLowerCase();
+        const matchesQ = !q || hay.indexOf(q) > -1;
+        const matchesInc = !onlyInc || isIncomplete(w);
+        const show = matchesQ && matchesInc;
+        el.classList.toggle('hidden', !show);
+        el.classList.toggle('match', !!q && matchesQ);
+        if (el.__moverow) el.__moverow.style.display = show ? '' : 'none';
+      });
+    }
+    $('search').addEventListener('input', applyFilter);
+    $('searchClr').addEventListener('click', () => { $('search').value = ''; applyFilter(); $('search').focus(); });
+    $('onlyIncomplete').addEventListener('change', applyFilter);
+
+    /* ---------- BULK ---------- */
+    $('bulkMode').addEventListener('change', () => { if (!$('bulkMode').checked) selected.clear(); renderSections(); });
+    function refreshBulk() {
+      const on = $('bulkMode').checked;
+      $('bulkbar').classList.toggle('show', on);
+      $('bulkCnt').textContent = selected.size + ' избрани';
+    }
+    function populateBulkSelectors() {
+      $('bulkMoveSel').innerHTML = shiftOptions(-1, -1);
+      let lh = '<option value="">— без линия —</option>';
+      (data.lines || []).forEach((l) => { lh += `<option value="${esc(l.name).replace(/"/g,'&quot;')}">${l.lineNo} · ${esc(l.name)}</option>`; });
+      $('bulkLineSel').innerHTML = lh;
+    }
+    $('bulkClear').addEventListener('click', () => { selected.clear(); renderSections(); });
+    $('bulkMoveBtn').addEventListener('click', () => {
+      if (!selected.size) return showStatus('Няма избрани хора.', 'info');
+      const [ts, tsh] = $('bulkMoveSel').value.split(':').map(Number);
+      snapshot();
+      const list = [...selected];
+      list.forEach((w) => {
+        // find + remove from current location
+        for (const sec of data.sections) for (const sh of sec.shifts) {
+          const i = sh.workers.indexOf(w); if (i > -1) { sh.workers.splice(i, 1); }
+        }
+      });
+      list.forEach((w) => data.sections[ts].shifts[tsh].workers.push(w));
+      showStatus(`Преместени ${list.length} души.`, 'ok');
+      renderSections();
+    });
+    $('bulkLineBtn').addEventListener('click', () => {
+      if (!selected.size) return showStatus('Няма избрани хора.', 'info');
+      const line = $('bulkLineSel').value;
+      snapshot();
+      [...selected].forEach((w) => { w.line = line; delete w.color; });
+      showStatus(`Зададена линия на ${selected.size} души.`, 'ok');
+      renderSections();
+    });
+
+    /* ---------- SAVE ---------- */
     $('save').addEventListener('click', async () => {
       $('save').disabled = true;
       showStatus('Запазване…', 'info');
@@ -384,30 +503,22 @@
             id: sec.id, name: sec.name,
             shifts: sec.shifts.map((sh) => ({
               index: sh.index, label: sh.label, time: sh.time,
-              workers: (sh.workers || []).map((w) => ({
-                name: w.name, location: w.location, line: w.line, color: w.color || '',
-              })),
+              workers: (sh.workers || []).map((w) => ({ name: w.name, location: w.location, line: w.line, color: w.color || '' })),
             })),
           })),
         };
-        const r = await fetch('/api/schedule', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-        });
+        const r = await fetch('/api/schedule', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         if (r.status === 401) { location.href = '/login.html?next=' + encodeURIComponent('/editor.html'); return; }
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || 'Грешка');
         showStatus('✓ Запазено. Таблото ще се обнови автоматично.', 'ok');
-        await load(); // reload the normalized data (renumbered)
-      } catch (e) {
-        showStatus('Грешка: ' + e.message, 'err');
-      } finally { $('save').disabled = false; }
+        await load();
+      } catch (e) { showStatus('Грешка: ' + e.message, 'err'); }
+      finally { $('save').disabled = false; }
     });
 
     $('reload').addEventListener('click', () => load());
-    $('logout').addEventListener('click', async () => {
-      await fetch('/api/logout', { method: 'POST' });
-      location.href = '/login.html';
-    });
+    $('logout').addEventListener('click', async () => { await fetch('/api/logout', { method: 'POST' }); location.href = '/login.html'; });
 
     load();
   </script>

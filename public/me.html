@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Моята смяна — Септона</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: radial-gradient(900px 500px at 50% -10%, #16204a, #0b1020 60%); color: #eaf0ff; min-height: 100vh; padding: 22px 16px 40px; }
+    .wrap { max-width: 560px; margin: 0 auto; }
+    .brand { text-align: center; margin-bottom: 4px; }
+    .brand h1 { font-size: 20px; font-weight: 900; letter-spacing: .02em; }
+    .brand .sub { color: #9fb0d6; font-size: 13px; margin-top: 2px; }
+    .period { text-align: center; color: #ffb020; font-weight: 700; font-size: 13px; margin: 8px 0 18px; }
+    .search { display: flex; align-items: center; gap: 10px; background: #0f1730; border: 1px solid #33477e; border-radius: 14px; padding: 14px 16px; position: sticky; top: 10px; z-index: 5; }
+    .search input { flex: 1; background: transparent; border: none; color: #eaf0ff; font-size: 17px; font-family: inherit; outline: none; }
+    .search .clr { color: #9fb0d6; font-size: 18px; cursor: pointer; }
+    .hint { color: #6b7ba6; font-size: 13px; text-align: center; margin: 16px 0; }
+    .card { background: linear-gradient(180deg, #121a33, #0f1730); border: 1px solid #223056; border-radius: 16px; padding: 16px; margin-top: 12px; display: flex; gap: 14px; align-items: center; }
+    .badge { width: 46px; height: 46px; border-radius: 50%; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 20px; color: #0b1020; box-shadow: inset 0 0 0 2px rgba(0,0,0,.28); }
+    .info { min-width: 0; flex: 1; }
+    .info .nm { font-size: 18px; font-weight: 800; }
+    .info .rows { margin-top: 6px; display: flex; flex-direction: column; gap: 3px; }
+    .info .r { font-size: 14px; color: #cfe0ff; }
+    .info .r b { color: #fff; }
+    .info .r .k { color: #9fb0d6; display: inline-block; min-width: 74px; }
+    .tag { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 800; }
+    .none { text-align: center; color: #9fb0d6; padding: 26px 10px; }
+    .foot { text-align: center; color: #6b7ba6; font-size: 12px; margin-top: 26px; }
+    .count { text-align: center; color: #6b7ba6; font-size: 12px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand">
+      <h1>„СЕПТОНА БЪЛГАРИЯ" АД</h1>
+      <div class="sub">Намери своята смяна и автобусна линия</div>
+    </div>
+    <div class="period" id="period">—</div>
+
+    <div class="search">
+      <span>🔎</span>
+      <input type="text" id="q" placeholder="Въведете вашето име…" autocomplete="off" autofocus />
+      <span class="clr" id="clr">✕</span>
+    </div>
+
+    <div class="hint" id="hint">Напишете първите букви от името си.</div>
+    <div id="results"></div>
+    <div class="count" id="count"></div>
+
+    <div class="foot">Данните се обновяват автоматично след публикуване на графика.</div>
+  </div>
+
+  <script>
+    let sched = null;
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+
+    function toHex6(c) {
+      c = String(c || '#FFFFFF');
+      if (/^#[0-9a-fA-F]{3}$/.test(c)) c = '#' + c.slice(1).split('').map(x => x + x).join('');
+      return /^#[0-9a-fA-F]{6}$/.test(c) ? c : '#FFFFFF';
+    }
+    function textOn(hex) {
+      hex = toHex6(hex).slice(1);
+      const r = parseInt(hex.slice(0,2),16), g = parseInt(hex.slice(2,4),16), b = parseInt(hex.slice(4,6),16);
+      return (0.299*r + 0.587*g + 0.114*b) > 150 ? '#0b1020' : '#ffffff';
+    }
+
+    async function load() {
+      try {
+        const r = await fetch('/api/schedule', { cache: 'no-store' });
+        if (!r.ok) throw 0;
+        sched = await r.json();
+        $('period').textContent = sched.period || '';
+      } catch (e) {
+        $('period').textContent = '';
+        $('hint').textContent = 'Все още няма зареден график.';
+      }
+    }
+
+    // Build a flat index of workers with their section + shift.
+    function index() {
+      const out = [];
+      (sched.sections || []).forEach((sec) => (sec.shifts || []).forEach((sh) => (sh.workers || []).forEach((w) => {
+        out.push({ w, section: sec.name, shiftLabel: sh.label, shiftTime: sh.time });
+      })));
+      return out;
+    }
+
+    function lineColor(name) {
+      const l = (sched.lines || []).find((x) => x.name === name);
+      return l ? l.color : '#FFFFFF';
+    }
+    function lineNoOf(name) {
+      const i = (sched.lines || []).findIndex((x) => x.name === name);
+      return i > -1 ? i + 1 : '';
+    }
+
+    function render() {
+      const q = $('q').value.trim().toLowerCase();
+      const res = $('results'); res.innerHTML = ''; $('count').textContent = '';
+      if (!sched) return;
+      if (q.length < 2) { $('hint').style.display = 'block'; $('hint').textContent = 'Напишете поне 2 букви от името си.'; return; }
+      $('hint').style.display = 'none';
+      const matches = index().filter((x) => String(x.w.name || '').toLowerCase().indexOf(q) > -1).slice(0, 30);
+      if (!matches.length) {
+        res.innerHTML = '<div class="none">Няма намерен служител с това име.<br>Проверете правописа или попитайте отговорника.</div>';
+        return;
+      }
+      matches.forEach((m) => {
+        const w = m.w;
+        const col = w.color || lineColor(w.line);
+        const no = lineNoOf(w.line);
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <div class="badge" style="background:${col};color:${textOn(col)}">${no || '–'}</div>
+          <div class="info">
+            <div class="nm">${esc(w.name)}</div>
+            <div class="rows">
+              <div class="r"><span class="k">Цех:</span> <b>${esc(m.section)}</b></div>
+              <div class="r"><span class="k">Смяна:</span> <b>${esc(m.shiftLabel)}</b> ${esc(m.shiftTime)}</div>
+              <div class="r"><span class="k">Линия:</span> ${w.line ? `<span class="tag" style="background:${col};color:${textOn(col)}">${no} · ${esc(w.line)}</span>` : '<b>—</b>'}</div>
+              <div class="r"><span class="k">Спирка:</span> <b>${esc(w.location) || '—'}</b></div>
+            </div>
+          </div>`;
+        res.appendChild(card);
+      });
+      $('count').textContent = matches.length >= 30 ? 'Показани първите 30 — уточнете търсенето.' : (matches.length + ' резултат' + (matches.length === 1 ? '' : 'а'));
+    }
+
+    $('q').addEventListener('input', render);
+    $('clr').addEventListener('click', () => { $('q').value = ''; render(); $('q').focus(); });
+    load();
+  </script>
+</body>
+</html>
