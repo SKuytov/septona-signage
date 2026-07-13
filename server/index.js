@@ -1,21 +1,94 @@
 'use strict';
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const express = require('express');
 const multer = require('multer');
 const { parseScheduleBuffer } = require('./lib/parseSchedule');
 const messages = require('./lib/messages');
 
+const ROOT = path.join(__dirname, '..');
+
+// Minimal .env loader (no dependency): populate process.env from ROOT/.env if present.
+(function loadEnv() {
+  try {
+    const envPath = path.join(ROOT, '.env');
+    if (!fs.existsSync(envPath)) return;
+    for (const raw of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
+      const line = raw.trim();
+      if (!line || line.startsWith('#')) continue;
+      const eq = line.indexOf('=');
+      if (eq < 0) continue;
+      const key = line.slice(0, eq).trim();
+      let val = line.slice(eq + 1).trim();
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1);
+      }
+      if (key && process.env[key] === undefined) process.env[key] = val;
+    }
+  } catch (e) { /* ignore malformed .env */ }
+})();
+
 const app = express();
 const PORT = process.env.PORT || 3000;
-const ROOT = path.join(__dirname, '..');
 const DATA_DIR = path.join(ROOT, 'data');
 const UPLOAD_DIR = path.join(ROOT, 'uploads');
 const DATA_FILE = path.join(DATA_DIR, 'schedule.json');
-// Optional admin key to protect uploads (set ADMIN_KEY env to enable)
+const PUBLIC_DIR = path.join(ROOT, 'public');
+// Optional admin key to protect the admin pages + uploads (set ADMIN_KEY env to enable)
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
+// Secret used to sign the login cookie. Defaults to a value derived from ADMIN_KEY;
+// set SESSION_SECRET to invalidate sessions independently / across restarts consistently.
+const SESSION_SECRET = process.env.SESSION_SECRET ||
+  (ADMIN_KEY ? crypto.createHash('sha256').update('septona:' + ADMIN_KEY).digest('hex') : '');
+const COOKIE_NAME = 'septona_admin';
+const SESSION_MAX_AGE_MS = 12 * 60 * 60 * 1000; // 12 hours
+
+// Pages that require an authenticated admin session.
+const PROTECTED_PAGES = new Set(['/admin.html', '/messages.html', '/admin', '/messages']);
 
 for (const d of [DATA_DIR, UPLOAD_DIR]) if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+
+// ---------------- AUTH HELPERS ----------------
+
+function signSession(expMs) {
+  const payload = String(expMs);
+  const sig = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('hex');
+  return payload + '.' + sig;
+}
+
+function verifySession(token) {
+  if (!token || !SESSION_SECRET) return false;
+  const dot = token.lastIndexOf('.');
+  if (dot < 0) return false;
+  const payload = token.slice(0, dot);
+  const sig = token.slice(dot + 1);
+  const expected = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('hex');
+  // constant-time compare
+  const a = Buffer.from(sig);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return false;
+  const exp = Number(payload);
+  return Number.isFinite(exp) && Date.now() < exp;
+}
+
+function parseCookies(req) {
+  const header = req.headers.cookie || '';
+  const out = {};
+  header.split(';').forEach((part) => {
+    const i = part.indexOf('=');
+    if (i > -1) out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
+  });
+  return out;
+}
+
+// True if the request carries a valid session cookie OR the correct x-admin-key header.
+function isAuthed(req) {
+  if (!ADMIN_KEY) return true; // auth disabled when no key configured
+  if (req.headers['x-admin-key'] && req.headers['x-admin-key'] === ADMIN_KEY) return true;
+  const cookies = parseCookies(req);
+  return verifySession(cookies[COOKIE_NAME]);
+}
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -38,14 +111,57 @@ const imgUpload = multer({
 });
 
 function requireAdmin(req, res, next) {
-  if (ADMIN_KEY && req.headers['x-admin-key'] !== ADMIN_KEY) {
-    return res.status(401).json({ error: 'Невалиден администраторски ключ.' });
+  if (!isAuthed(req)) {
+    return res.status(401).json({ error: 'Невалиден или изтекъл администраторски достъп.' });
   }
   next();
 }
 
 app.use(express.json());
-app.use(express.static(path.join(ROOT, 'public')));
+app.use(express.urlencoded({ extended: false }));
+
+// ---------------- LOGIN / LOGOUT ----------------
+
+// Login form posts { key }. On success set a signed httpOnly session cookie.
+app.post('/api/login', (req, res) => {
+  if (!ADMIN_KEY) return res.json({ ok: true }); // auth disabled
+  const key = (req.body && req.body.key) || '';
+  const a = Buffer.from(String(key));
+  const b = Buffer.from(ADMIN_KEY);
+  const ok = a.length === b.length && crypto.timingSafeEqual(a, b);
+  if (!ok) return res.status(401).json({ error: 'Грешен ключ.' });
+  const exp = Date.now() + SESSION_MAX_AGE_MS;
+  const token = signSession(exp);
+  const secure = req.headers['x-forwarded-proto'] === 'https' || req.secure;
+  res.cookie
+    ? res.cookie(COOKIE_NAME, token, { httpOnly: true, sameSite: 'lax', secure, maxAge: SESSION_MAX_AGE_MS })
+    : res.setHeader('Set-Cookie',
+        `${COOKIE_NAME}=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${Math.floor(SESSION_MAX_AGE_MS / 1000)}${secure ? '; Secure' : ''}`);
+  res.json({ ok: true });
+});
+
+app.post('/api/logout', (req, res) => {
+  res.setHeader('Set-Cookie', `${COOKIE_NAME}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
+  res.json({ ok: true });
+});
+
+// Lets the page check whether a login is required / current auth state.
+app.get('/api/auth-status', (req, res) => {
+  res.json({ required: !!ADMIN_KEY, authed: isAuthed(req) });
+});
+
+// ---------------- PAGE GUARD ----------------
+// Gate the admin pages BEFORE static serving. Unauthenticated -> redirect to login.
+app.get(['/admin.html', '/messages.html', '/admin', '/messages'], (req, res) => {
+  const isMessages = req.path.indexOf('messages') > -1;
+  const file = isMessages ? 'messages.html' : 'admin.html';
+  if (!isAuthed(req)) {
+    return res.redirect('/login.html?next=' + encodeURIComponent('/' + file));
+  }
+  res.sendFile(path.join(PUBLIC_DIR, file));
+});
+
+app.use(express.static(PUBLIC_DIR));
 
 // Current schedule (for the display)
 app.get('/api/schedule', (req, res) => {
@@ -64,10 +180,7 @@ app.get('/api/status', (req, res) => {
 });
 
 // Upload + parse a new weekly xlsx
-app.post('/api/upload', (req, res) => {
-  if (ADMIN_KEY && req.headers['x-admin-key'] !== ADMIN_KEY) {
-    return res.status(401).json({ error: 'Невалиден администраторски ключ.' });
-  }
+app.post('/api/upload', requireAdmin, (req, res) => {
   upload.single('file')(req, res, async (err) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!req.file) return res.status(400).json({ error: 'Няма качен файл.' });
@@ -130,5 +243,6 @@ app.get('/healthz', (req, res) => res.json({ ok: true }));
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Septona signage running on http://0.0.0.0:${PORT}`);
-  if (ADMIN_KEY) console.log('Admin uploads protected with ADMIN_KEY.');
+  if (ADMIN_KEY) console.log('Admin pages + API protected with ADMIN_KEY (login at /login.html).');
+  else console.warn('WARNING: ADMIN_KEY not set — admin pages are OPEN. Set ADMIN_KEY to protect them.');
 });

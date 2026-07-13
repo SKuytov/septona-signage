@@ -61,6 +61,7 @@
       <a href="/admin.html">График</a>
       <a href="/messages.html" class="active">Съобщения</a>
       <a href="/?kiosk=1&rotate=20" target="_blank">Таблото →</a>
+      <a href="#" id="logout">Изход</a>
     </div>
 
     <div class="card">
@@ -106,9 +107,6 @@
       <div class="drop" id="drop">Пуснете изображение тук или щракнете (png, jpg, gif, webp)</div>
       <input type="file" id="image" accept="image/*" />
       <img class="preview" id="preview" alt="" />
-
-      <label>Администраторски ключ (ако е зададен)</label>
-      <input type="password" id="key" placeholder="оставете празно ако не е настроен" />
 
       <button class="primary" id="publish">Публикувай съобщение</button>
       <div class="result" id="result"></div>
@@ -168,7 +166,8 @@
       if (file) fd.append('image', file);
       btn.disabled = true; btn.textContent = 'Публикуване…';
       try {
-        const r = await fetch('/api/messages', { method: 'POST', headers: { 'x-admin-key': $('key').value }, body: fd });
+        const r = await fetch('/api/messages', { method: 'POST', body: fd });
+        if (r.status === 401) { location.href = '/login.html?next=' + encodeURIComponent('/messages.html'); return; }
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || 'Грешка');
         res.className = 'result ok'; res.textContent = '✓ Съобщението е публикувано на таблото.';
@@ -184,8 +183,8 @@
     async function loadList() {
       const box = $('list');
       try {
-        const r = await fetch('/api/messages/all', { headers: { 'x-admin-key': $('key').value } });
-        if (r.status === 401) { box.innerHTML = '<div class="empty">Въведете администраторски ключ за да видите съобщенията.</div>'; return; }
+        const r = await fetch('/api/messages/all');
+        if (r.status === 401) { location.href = '/login.html?next=' + encodeURIComponent('/messages.html'); return; }
         const d = await r.json();
         const list = d.messages || [];
         if (!list.length) { box.innerHTML = '<div class="empty">Няма съобщения.</div>'; return; }
@@ -209,12 +208,17 @@
     }
     async function del(id) {
       if (!confirm('Изтриване на съобщението?')) return;
-      await fetch('/api/messages/' + id, { method: 'DELETE', headers: { 'x-admin-key': $('key').value } });
+      const r = await fetch('/api/messages/' + id, { method: 'DELETE' });
+      if (r.status === 401) { location.href = '/login.html?next=' + encodeURIComponent('/messages.html'); return; }
       loadList();
     }
     function esc(s) { return String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
-    $('key').addEventListener('change', loadList);
+    $('logout').addEventListener('click', async (e) => {
+      e.preventDefault();
+      await fetch('/api/logout', { method: 'POST' });
+      location.href = '/login.html';
+    });
     loadList();
   </script>
 </body>

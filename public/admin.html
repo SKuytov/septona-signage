@@ -32,9 +32,13 @@
     .li { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #9fb0d6; }
     .sw { width: 16px; height: 16px; border-radius: 4px; border: 1px solid rgba(255,255,255,.25); }
     a.view { display: inline-block; margin-top: 16px; color: #ffb020; text-decoration: none; font-weight: 700; }
+    .logout { position: absolute; top: 18px; right: 18px; }
+    .logout button { margin: 0; width: auto; padding: 8px 14px; background: transparent; color: #9fb0d6; border: 1px solid #33477e; border-radius: 8px; font-size: 13px; font-weight: 600; }
+    .logout button:hover { color: #ffb020; border-color: #ffb020; }
   </style>
 </head>
 <body>
+  <div class="logout"><button id="logout">Изход</button></div>
   <div class="card">
     <div class="brand"><span class="logo">SEPTONA</span><span style="font-weight:800">Качване на седмичен график</span></div>
     <h1>Обновяване на таблото в лобито</h1>
@@ -46,9 +50,6 @@
       <div class="fname" id="fname"></div>
     </div>
     <input type="file" id="file" accept=".xlsx" />
-
-    <label for="key">Администраторски ключ (ако е зададен)</label>
-    <input type="password" id="key" placeholder="оставете празно ако не е настроен" />
 
     <button id="btn" disabled>Качи и обнови таблото</button>
 
@@ -84,7 +85,8 @@
       btn.disabled = true; btn.textContent = 'Обработка…'; result.className = 'result';
       const fd = new FormData(); fd.append('file', file);
       try {
-        const r = await fetch('/api/upload', { method: 'POST', headers: { 'x-admin-key': document.getElementById('key').value }, body: fd });
+        const r = await fetch('/api/upload', { method: 'POST', body: fd });
+        if (r.status === 401) { location.href = '/login.html?next=' + encodeURIComponent('/admin.html'); return; }
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || 'Грешка');
         result.className = 'result ok';
@@ -100,6 +102,11 @@
         result.className = 'result err';
         result.innerHTML = '<h3>Грешка</h3><div>' + e.message + '</div>';
       } finally { btn.disabled = false; btn.textContent = 'Качи и обнови таблото'; }
+    });
+
+    document.getElementById('logout').addEventListener('click', async () => {
+      await fetch('/api/logout', { method: 'POST' });
+      location.href = '/login.html';
     });
   </script>
 </body>

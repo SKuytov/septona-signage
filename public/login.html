@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Вход — Септона табло</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: radial-gradient(900px 500px at 20% -10%, #16204a, #0b1020 60%); color: #eaf0ff; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .card { width: 100%; max-width: 400px; background: linear-gradient(180deg, #121a33, #0f1730); border: 1px solid #223056; border-radius: 18px; padding: 32px; }
+    .logo { display: inline-block; font-weight: 900; letter-spacing: .14em; background: #fff; color: #0b1020; padding: 4px 12px; border-radius: 8px; margin-bottom: 20px; }
+    h1 { font-size: 22px; margin-bottom: 4px; }
+    .sub { color: #9fb0d6; font-size: 14px; margin-bottom: 22px; }
+    label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 6px; color: #cdd8f5; }
+    input[type=password] { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid #33477e; background: #0f1730; color: #eaf0ff; font-size: 16px; font-family: inherit; }
+    input[type=password]:focus { outline: none; border-color: #ffb020; }
+    button { margin-top: 18px; width: 100%; padding: 14px; border: none; border-radius: 12px; background: #ffb020; color: #0b1020; font-weight: 800; font-size: 16px; cursor: pointer; font-family: inherit; }
+    button:disabled { opacity: .5; cursor: default; }
+    .err { margin-top: 14px; border-radius: 10px; padding: 11px 14px; font-size: 14px; background: rgba(255,80,80,.12); border: 1px solid #ff5050; color: #ffb3b3; display: none; }
+    .err.show { display: block; }
+  </style>
+</head>
+<body>
+  <form class="card" id="form">
+    <span class="logo">SEPTONA</span>
+    <h1>Вход в управлението</h1>
+    <p class="sub">Въведете администраторския ключ, за да продължите към таблото.</p>
+
+    <label for="key">Администраторски ключ</label>
+    <input type="password" id="key" autocomplete="current-password" autofocus />
+
+    <button type="submit" id="btn">Вход</button>
+    <div class="err" id="err"></div>
+  </form>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const next = params.get('next') || '/admin.html';
+    const form = document.getElementById('form');
+    const err = document.getElementById('err');
+    const btn = document.getElementById('btn');
+
+    // If auth isn't required (no ADMIN_KEY set), skip straight through.
+    fetch('/api/auth-status').then(r => r.json()).then(s => {
+      if (!s.required || s.authed) location.replace(next);
+    }).catch(() => {});
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      err.classList.remove('show');
+      btn.disabled = true; btn.textContent = 'Влизане…';
+      try {
+        const r = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: document.getElementById('key').value }),
+        });
+        const d = await r.json();
+        if (r.ok && d.ok) {
+          location.replace(next);
+        } else {
+          err.textContent = d.error || 'Грешен ключ.';
+          err.classList.add('show');
+          btn.disabled = false; btn.textContent = 'Вход';
+        }
+      } catch (ex) {
+        err.textContent = 'Грешка при връзка със сървъра.';
+        err.classList.add('show');
+        btn.disabled = false; btn.textContent = 'Вход';
+      }
+    });
+  </script>
+</body>
+</html>

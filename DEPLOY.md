@@ -97,10 +97,28 @@ chromium --kiosk --incognito --noerrdialogs --disable-infobars \
 
 ---
 
+## Защита на админ страниците / Admin login
+
+На публичен адрес **винаги** задавай `ADMIN_KEY` — тогава `/admin.html` и `/messages.html` изискват вход през `/login.html` (подписана httpOnly сесия, 12 часа). Самото табло (`/`) остава публично, за да може дисплеят да го зарежда без вход.
+
+```bash
+# при инсталация:
+curl -fsSL .../install.sh | sudo ADMIN_KEY="силен-ключ" bash
+
+# или на вече инсталирана система — редактирай .env и рестартирай:
+echo 'ADMIN_KEY=силен-ключ' | sudo tee /opt/septona-signage/.env
+cd /opt/septona-signage && pm2 restart septona-signage --update-env
+```
+
+> Сесията се подписва с ключ, изведен от `ADMIN_KEY`. За независимо анулиране на всички сесии можеш да зададеш и `SESSION_SECRET` в `.env` (промяната му изключва всички влезли потребители). API-то приема и `x-admin-key` хедър за автоматизация/curl.
+
+---
+
 ## Ежедневна работа
 
 | Действие | Адрес / команда |
 |---|---|
+| Вход в управлението | `https://<адрес>/login.html` (веднъж, след това сесия 12ч) |
 | Качване на нов график | `https://<адрес>/admin.html` → пусни новия `.xlsx` |
 | Управление на съобщения | `https://<адрес>/messages.html` |
 | Логове | `pm2 logs septona-signage` |
