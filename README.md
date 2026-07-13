@@ -84,9 +84,17 @@ ADMIN_KEY=таен-ключ npm start
 
 ---
 
-## Deploy: Proxmox LXC + Tailscale Funnel
+## Deploy: Ubuntu 24.04 VM + Tailscale Funnel
 
-Виж [`DEPLOY.md`](./DEPLOY.md) за пълни стъпки — създаване на Ubuntu LXC контейнер, инсталиране на Node.js + PM2, Tailscale и публикуване с `tailscale funnel` за публичен HTTPS адрес.
+**Една команда на новата VM:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SKuytov/septona-signage/master/install.sh | sudo bash
+```
+
+Инсталира Node.js 20 + PM2, клонира repo-то, стартира под PM2 (auto-start при boot) и публикува през Tailscale Funnel. Обновяване: `cd /opt/septona-signage && ./update.sh`.
+
+Виж [`DEPLOY.md`](./DEPLOY.md) за опции (ADMIN_KEY, порт, без Tailscale), ръчна инсталация и troubleshooting.
 
 ---
 

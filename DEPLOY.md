@@ -1,115 +1,86 @@
-# Deploy — Proxmox LXC + Tailscale Funnel
+# Deploy — Ubuntu 24.04 VM + Tailscale Funnel
 
-Пълни стъпки за пускане на таблото на нов Linux контейнер в Proxmox с публичен HTTPS адрес през Tailscale Funnel. Дисплеят (iiyama 65") зарежда този адрес в браузър в kiosk режим.
+Пълни стъпки за пускане на таблото на обикновена Linux VM (Ubuntu 24.04) с публичен HTTPS адрес през Tailscale Funnel. Дисплеят (iiyama 65") зарежда този адрес в браузър в kiosk режим.
 
----
-
-## 1. Създай LXC контейнер в Proxmox
-
-На Proxmox хоста (shell на нода):
-
-```bash
-# Свали Ubuntu 24.04 template ако липсва
-pveam update
-pveam available | grep ubuntu-24.04
-pveam download local ubuntu-24.04-standard_24.04-2_amd64.tar.zst
-
-# Създай контейнера (сменѝ storage/ID според твоята среда)
-pct create 210 local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst \
-  --hostname septona-signage \
-  --cores 2 --memory 1024 --swap 512 \
-  --net0 name=eth0,bridge=vmbr0,ip=dhcp \
-  --rootfs local-lvm:8 \
-  --unprivileged 1 \
-  --features nesting=1 \
-  --onboot 1
-
-pct start 210
-pct enter 210
-```
-
-> `nesting=1` е нужно за да работи Tailscale в unprivileged LXC. Ако Tailscale не тръгне, виж секция „Отстраняване на проблеми".
+> Repo-то е **публично**, така че клонирането не изисква вход или токен.
 
 ---
 
-## 2. Базова настройка вътре в контейнера
+## Бърза инсталация (една команда) / Quick install
+
+На новата VM (Ubuntu 24.04), изпълни:
 
 ```bash
-apt update && apt upgrade -y
-apt install -y curl git ca-certificates
-
-# Node.js 20 LTS
-curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-apt install -y nodejs
-node -v && npm -v
-
-# PM2 за process management
-npm install -g pm2
+curl -fsSL https://raw.githubusercontent.com/SKuytov/septona-signage/master/install.sh | sudo bash
 ```
+
+Скриптът прави всичко:
+
+1. Инсталира `curl`, `git`, **Node.js 20 LTS** и **PM2**.
+2. Клонира repo-то в `/opt/septona-signage` (или обновява, ако вече е там).
+3. Инсталира зависимостите (`npm install --omit=dev`).
+4. Стартира приложението под PM2 на порт **3000** и го включва да тръгва при boot.
+5. Прави health check.
+6. Инсталира **Tailscale** и публикува порта през **Funnel** (публичен HTTPS).
+
+### Опции (environment променливи)
+
+```bash
+# с администраторски ключ за качването:
+curl -fsSL https://raw.githubusercontent.com/SKuytov/septona-signage/master/install.sh \
+  | sudo ADMIN_KEY="смени-ме" bash
+
+# друг порт:
+curl -fsSL .../install.sh | sudo PORT=8080 bash
+
+# без Tailscale (само локална мрежа):
+curl -fsSL .../install.sh | sudo NO_TAILSCALE=1 bash
+```
+
+| Променлива | По подразбиране | Значение |
+|---|---|---|
+| `PORT` | `3000` | Порт на приложението |
+| `ADMIN_KEY` | (без) | Ключ за качване на график/съобщения |
+| `APP_DIR` | `/opt/septona-signage` | Директория за инсталация |
+| `REPO_URL` | публичното repo | Git адрес за клониране |
+| `NO_TAILSCALE` | `0` | `1` = пропусни Tailscale/Funnel |
 
 ---
 
-## 3. Клонирай и стартирай приложението
+## Tailscale оторизация
+
+Ако Tailscale още не е свързан, скриптът ще те подсети. Свържи устройството:
 
 ```bash
-cd /opt
-git clone https://github.com/<твоят-потребител>/septona-signage.git
-cd septona-signage
-npm install --omit=dev
-
-# (по желание) администраторски ключ за качването
-echo "ADMIN_KEY=смени-ме" > .env
-
-# Старт с PM2
-PORT=3000 pm2 start server/index.js --name septona-signage
-pm2 save
-pm2 startup systemd -u root --hp /root   # изпълни командата която extра-принтира
-```
-
-Провери локално:
-
-```bash
-curl http://localhost:3000/healthz   # -> ok
-```
-
----
-
-## 4. Tailscale + Funnel (публичен HTTPS)
-
-```bash
-curl -fsSL https://tailscale.com/install.sh | sh
-tailscale up
+sudo tailscale up
 # отвори показания линк и оторизирай устройството в твоя tailnet
 ```
 
-Включи Funnel за порт 3000 (изисква MagicDNS + HTTPS certs да са включени в Tailscale admin → DNS):
+После публикувай отново (или изчакай скрипта):
 
 ```bash
-# отвори порта публично през HTTPS
-tailscale funnel --bg 3000
-
-# провери статуса и получи публичния адрес
-tailscale funnel status
+sudo tailscale funnel --bg 3000
+sudo tailscale funnel status   # показва публичния адрес
 ```
 
 Ще получиш адрес от вида:
 
 ```
-https://septona-signage.<твоят-tailnet>.ts.net/
+https://<hostname>.<твоят-tailnet>.ts.net/
 ```
 
-Това е публичният HTTPS адрес на таблото.
-
-> Ако предпочиташ адресът да е достъпен само в твоя tailnet (без публичен интернет), използвай `tailscale serve 3000` вместо `funnel`.
+> **Изисквания за Funnel:** в Tailscale admin конзолата включи **MagicDNS** и **HTTPS certificates** (DNS → Enable HTTPS), и разреши Funnel за устройството (Access controls / Funnel node attribute).
+>
+> Ако искаш адресът да е достъпен само в твоя tailnet (без публичен интернет), използвай `tailscale serve 3000` вместо `funnel`.
 
 ---
 
-## 5. Настрой дисплея (iiyama 65")
+## Настрой дисплея (iiyama 65")
 
 На устройството което кара дисплея (мини-PC / Raspberry Pi / вградения player), отвори в браузър:
 
 ```
-https://septona-signage.<твоят-tailnet>.ts.net/?kiosk=1&rotate=20
+https://<hostname>.<твоят-tailnet>.ts.net/?kiosk=1&rotate=20
 ```
 
 - `kiosk=1` — скрива контролите.
@@ -119,42 +90,68 @@ https://septona-signage.<твоят-tailnet>.ts.net/?kiosk=1&rotate=20
 
 ```bash
 chromium --kiosk --incognito --noerrdialogs --disable-infobars \
-  "https://septona-signage.<твоят-tailnet>.ts.net/?kiosk=1&rotate=20"
+  "https://<hostname>.<твоят-tailnet>.ts.net/?kiosk=1&rotate=20"
 ```
+
+Или използвай **Android APK-то** (`SeptonaSignage-debug.apk`) на Android media player — виж [`android/README.md`](./android/README.md).
 
 ---
 
-## 6. Качване на нов седмичен график
+## Ежедневна работа
 
-Всяка седмица отвори (от всеки компютър/телефон):
+| Действие | Адрес / команда |
+|---|---|
+| Качване на нов график | `https://<адрес>/admin.html` → пусни новия `.xlsx` |
+| Управление на съобщения | `https://<адрес>/messages.html` |
+| Логове | `pm2 logs septona-signage` |
+| Статус | `pm2 status` |
+| Публичен адрес | `sudo tailscale funnel status` |
 
-```
-https://septona-signage.<твоят-tailnet>.ts.net/admin
-```
-
-Пусни новия `.xlsx` → таблото се обновява автоматично до 20 секунди, без рестарт.
+Таблото се обновява автоматично до 20 секунди след качване, без рестарт.
 
 ---
 
 ## Обновяване на кода / Update
 
+От инсталационната директория:
+
 ```bash
 cd /opt/septona-signage
-git pull
-npm install --omit=dev
-pm2 restart septona-signage
+./update.sh
+```
+
+Скриптът прави `git pull`, `npm install --omit=dev` и `pm2 restart`. Или отново пусни `install.sh` — той е идемпотентен и обновява съществуваща инсталация.
+
+---
+
+## Ръчна инсталация (ако не използваш скрипта)
+
+```bash
+sudo apt update && sudo apt install -y curl git ca-certificates
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash -
+sudo apt install -y nodejs
+sudo npm install -g pm2
+
+cd /opt
+sudo git clone https://github.com/SKuytov/septona-signage.git
+cd septona-signage
+sudo npm install --omit=dev
+echo "ADMIN_KEY=смени-ме" | sudo tee .env      # по желание
+
+sudo PORT=3000 pm2 start server/index.js --name septona-signage
+sudo pm2 save
+sudo pm2 startup systemd -u root --hp /root    # изпълни командата която се принтира
+
+curl http://localhost:3000/healthz             # -> ok
 ```
 
 ---
 
 ## Отстраняване на проблеми / Troubleshooting
 
-- **Tailscale не тръгва в LXC** — увери се че `nesting=1` е зададено и добави в `/etc/pve/lxc/210.conf` на хоста:
-  ```
-  lxc.cgroup2.devices.allow: c 10:200 rwm
-  lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file
-  ```
-  после `pct restart 210`.
 - **Funnel казва „Funnel not available"** — включи Funnel node attribute и HTTPS в Tailscale admin конзолата (Settings → Feature previews / DNS → Enable HTTPS).
-- **Портът е зает** — смени `PORT` при `pm2 start` и в `tailscale funnel <нов-порт>`.
-- **Графикът изчезва след рестарт** — `data/schedule.json` е локален; просто качи файла отново през `/admin`. (Архивите на качените файлове са в `uploads/`.)
+- **Портът е зает** — стартирай с друг `PORT` (`sudo PORT=8080 bash` при install) и публикувай със същия порт: `sudo tailscale funnel --bg 8080`.
+- **Графикът изчезва след рестарт** — `data/schedule.json` е локален; просто качи файла отново през `/admin.html`. (Архивите на качените файлове са в `uploads/`.)
+- **Съобщенията изчезват** — `data/messages.json` също е локален и не се комитва; създай ги отново от `/messages.html`.
+- **PM2 не тръгва при boot** — изпълни ръчно командата принтирана от `pm2 startup systemd -u root --hp /root`, после `pm2 save`.
+- **Права при клониране в /opt** — ако не искаш root, клонирай в домашната директория (`APP_DIR=$HOME/septona-signage`).
