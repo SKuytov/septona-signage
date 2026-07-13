@@ -118,8 +118,8 @@ body {
   will-change: transform;
 }
 .worker {
-  display: flex; align-items: center; gap: 0.5vw;
-  padding: 0.28vh 0.5vw; border-radius: 7px; min-width: 0;
+  display: flex; align-items: center; gap: 0.45vw;
+  padding: 0.22vh 0.45vw; border-radius: 7px; min-width: 0;
   background: rgba(255,255,255,0.02);
 }
 /* subtle fade at the top/bottom edges — only shown when the column actually
@@ -130,15 +130,15 @@ body {
 .col-body.scrolls::before { top: 0; background: linear-gradient(180deg, var(--panel) 0%, rgba(18,26,51,0) 100%); }
 .col-body.scrolls::after { bottom: 0; background: linear-gradient(0deg, var(--panel2) 0%, rgba(15,23,48,0) 100%); }
 .worker .num {
-  font-size: 0.95vw; font-weight: 900; color: #0b1020;
-  border-radius: 50%; width: 1.6vw; height: 1.6vw;
+  font-size: 0.8vw; font-weight: 900; color: #0b1020;
+  border-radius: 50%; width: 1.35vw; height: 1.35vw;
   display: flex; align-items: center; justify-content: center;
   text-align: center; font-variant-numeric: tabular-nums; flex: 0 0 auto;
   box-shadow: inset 0 0 0 1px rgba(0,0,0,0.28);
 }
 .worker .meta { min-width: 0; }
-.worker .wname { font-weight: 700; font-size: 0.9vw; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.worker .wloc { font-size: 0.64vw; color: var(--ink-faint); line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.worker .wname { font-weight: 700; font-size: 0.74vw; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.worker .wloc { font-size: 0.54vw; color: var(--ink-faint); line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---------------- GRID (faithful colored) ---------------- */
 .grid-view { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }

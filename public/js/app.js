@@ -59,17 +59,10 @@
     const csi = currentShiftIndex();
     const cs = sec.shifts[csi];
     el('currentShiftValue').textContent = cs.label;
-    el('currentShiftCount').textContent = `${cs.count} работника`;
-
-    // shift totals summed across ALL sections
-    const totals = [0, 0, 0];
-    let grand = 0;
-    d.sections.forEach((s) => s.shifts.forEach((sh, i) => { totals[i] += sh.count; grand += sh.count; }));
-    const st = el('shiftTotals');
-    st.innerHTML = totals.map((n, i) =>
-      `<div class="st"><span class="dot" style="background:${SHIFT_COLORS[i]}"></span>` +
-      `<span class="n">${n}</span><span class="lbl">${['I', 'II', 'III'][i]} СМЯНА</span></div>`
-    ).join('') + `<div class="st total"><span class="n">${grand}</span><span class="lbl">ОБЩО</span></div>`;
+    // Public display shows no worker counts — clear the count text.
+    el('currentShiftCount').textContent = '';
+    // Shift-totals bar removed from the public display (no counts/sums).
+    el('shiftTotals').innerHTML = '';
   }
 
   /* ---------- tabs ---------- */
@@ -77,7 +70,7 @@
     const d = state.data;
     el('tabs').innerHTML = d.sections.map((s, i) =>
       `<div class="tab ${i === state.activeSection ? 'active' : ''}" data-idx="${i}">` +
-      `${s.name}<span class="badge">${s.total}</span></div>`
+      `${s.name}</div>`
     ).join('');
     el('tabs').querySelectorAll('.tab').forEach((t) =>
       t.addEventListener('click', () => { state.activeSection = +t.dataset.idx; renderAll(); })
@@ -109,7 +102,6 @@
             <span class="ctitle">${sh.label}</span>
             <span class="ctime">${sh.time}</span>
             ${isNow ? '<span class="live">СЕГА</span>' : ''}
-            <span class="ccount"><span class="big">${sh.count}</span><span class="small">РАБОТНИКА</span></span>
           </div>
           <div class="col-body">
             <div class="workers" style="--rows:${rows}">${workersHtml || '<div class="wloc" style="padding:1vh">няма</div>'}</div>
@@ -138,7 +130,7 @@
         </div>`).join('');
       return `
         <div class="gcol" style="--f:${subCols}">
-          <div class="gcol-head">${sh.label} · ${sh.time} · ${sh.count}</div>
+          <div class="gcol-head">${sh.label} · ${sh.time}</div>
           <div class="grows" style="--grows:${rowsPerCol};--subcols:${subCols}">${rowsHtml}</div>
         </div>`;
     }).join('');

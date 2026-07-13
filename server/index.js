@@ -84,7 +84,7 @@ const COOKIE_NAME = 'septona_admin';
 const SESSION_MAX_AGE_MS = 12 * 60 * 60 * 1000; // 12 hours
 
 // Pages that require an authenticated admin session.
-const PROTECTED_PAGES = new Set(['/admin.html', '/messages.html', '/admin', '/messages']);
+const PROTECTED_PAGES = new Set(['/admin.html', '/messages.html', '/editor.html', '/admin', '/messages', '/editor']);
 
 for (const d of [DATA_DIR, UPLOAD_DIR]) if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
 
@@ -156,8 +156,8 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: '5mb' })); // schedule editor can post a large payload
+app.use(express.urlencoded({ extended: false, limit: '5mb' }));
 
 // ---------------- LOGIN / LOGOUT ----------------
 
@@ -191,9 +191,10 @@ app.get('/api/auth-status', (req, res) => {
 
 // ---------------- PAGE GUARD ----------------
 // Gate the admin pages BEFORE static serving. Unauthenticated -> redirect to login.
-app.get(['/admin.html', '/messages.html', '/admin', '/messages'], (req, res) => {
-  const isMessages = req.path.indexOf('messages') > -1;
-  const file = isMessages ? 'messages.html' : 'admin.html';
+app.get(['/admin.html', '/messages.html', '/editor.html', '/admin', '/messages', '/editor'], (req, res) => {
+  let file = 'admin.html';
+  if (req.path.indexOf('messages') > -1) file = 'messages.html';
+  else if (req.path.indexOf('editor') > -1) file = 'editor.html';
   if (!isAuthed(req)) {
     return res.redirect('/login.html?next=' + encodeURIComponent('/' + file));
   }
@@ -239,6 +240,83 @@ app.post('/api/upload', requireAdmin, (req, res) => {
       res.status(500).json({ error: 'Грешка при обработка на файла: ' + e.message });
     }
   });
+});
+
+// Save an edited schedule (from the admin editor): move people across shifts,
+// change per-person bus line + color, edit the line legend/colors.
+// Recomputes counts/totals + re-derives lineNo from the (possibly edited) lines.
+app.post('/api/schedule', requireAdmin, (req, res) => {
+  try {
+    const body = req.body || {};
+    if (!Array.isArray(body.sections)) {
+      return res.status(400).json({ error: 'Невалидни данни: липсват цехове (sections).' });
+    }
+    const prev = fs.existsSync(DATA_FILE) ? JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')) : {};
+
+    const clean = (v) => (v == null ? '' : String(v));
+    const cleanColor = (c) => {
+      const s = clean(c).trim();
+      return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(s) ? s.toUpperCase() : '#FFFFFF';
+    };
+
+    // Rebuild the line legend from the edited payload (name -> {color, lineNo}).
+    const linesIn = Array.isArray(body.lines) ? body.lines : (prev.lines || []);
+    const lines = linesIn
+      .map((l) => ({ name: clean(l.name).trim(), color: cleanColor(l.color) }))
+      .filter((l) => l.name);
+    lines.forEach((l, i) => { l.lineNo = i + 1; });
+    const lineByName = new Map(lines.map((l) => [l.name, l]));
+
+    // Rebuild sections/shifts/workers with recomputed counts.
+    const sections = body.sections.map((sec, si) => {
+      const shifts = (Array.isArray(sec.shifts) ? sec.shifts : []).map((sh, shi) => {
+        const workers = (Array.isArray(sh.workers) ? sh.workers : []).map((w) => {
+          const lineName = clean(w.line).trim();
+          const legend = lineByName.get(lineName);
+          // per-person color: explicit color wins, else inherit from the line legend
+          const color = w.color ? cleanColor(w.color) : (legend ? legend.color : '#FFFFFF');
+          return {
+            name: clean(w.name).trim(),
+            location: clean(w.location).trim(),
+            line: lineName,
+            color,
+            lineNo: legend ? legend.lineNo : null,
+          };
+        }).filter((w) => w.name);
+        // renumber the per-worker sequence within the shift
+        workers.forEach((w, i) => { w.num = i + 1; });
+        return {
+          index: typeof sh.index === 'number' ? sh.index : shi,
+          label: clean(sh.label) || `СМЯНА ${shi + 1}`,
+          time: clean(sh.time),
+          workers,
+          count: workers.length,
+        };
+      });
+      const total = shifts.reduce((a, s) => a + s.count, 0);
+      return {
+        id: sec.id != null ? sec.id : si,
+        name: clean(sec.name).trim() || `ЦЕХ ${si + 1}`,
+        shifts,
+        total,
+      };
+    });
+
+    const grandTotal = sections.reduce((a, s) => a + s.total, 0);
+    const data = {
+      title: prev.title || body.title || 'Производствен график',
+      period: clean(body.period) || prev.period || '',
+      grandTotal,
+      parsedAt: new Date().toISOString(),
+      lines,
+      sections,
+    };
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+    res.json({ ok: true, grandTotal, sections: sections.map((s) => ({ name: s.name, total: s.total })) });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Грешка при запис: ' + e.message });
+  }
 });
 
 // ---------------- SETTINGS (display timings) ----------------
